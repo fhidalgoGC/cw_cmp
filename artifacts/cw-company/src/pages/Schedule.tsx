@@ -9,13 +9,86 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, CalendarOff, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Clock, CalendarOff, X, Plus, Copy } from "lucide-react";
 import { formatDateLong } from "@/lib/format";
 import { toast } from "sonner";
 import { es } from "date-fns/locale";
 
 type Slot = { weekday: number; time: string; enabled: boolean };
 type Scope = "all" | "weekdays" | "weekends" | "custom";
+type Range = { from: string; to: string };
+
+const MIN_RANGE_MIN = 120; // 2h minimum
+
+function timeToMin(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+function minToTime(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+const FROM_OPTIONS: string[] = (() => {
+  const out: string[] = [];
+  for (let m = 0; m < 1440; m += 30) out.push(minToTime(m));
+  return out;
+})();
+const TO_OPTIONS: string[] = (() => {
+  const out: string[] = [];
+  for (let m = 30; m <= 1440; m += 30) out.push(m === 1440 ? "24:00" : minToTime(m));
+  return out;
+})();
+function rangesToSlotTimes(ranges: Range[]): string[] {
+  const out = new Set<string>();
+  for (const r of ranges) {
+    const start = timeToMin(r.from);
+    const end = r.to === "24:00" ? 1440 : timeToMin(r.to);
+    for (let m = start; m < end; m += 30) out.add(minToTime(m));
+  }
+  return [...out].sort();
+}
+function slotsToRanges(times: string[]): Range[] {
+  const mins = times.map(timeToMin).sort((a, b) => a - b);
+  const out: Range[] = [];
+  let i = 0;
+  while (i < mins.length) {
+    let j = i;
+    while (j + 1 < mins.length && mins[j + 1] === mins[j] + 30) j++;
+    const endMin = mins[j] + 30;
+    out.push({ from: minToTime(mins[i]), to: endMin === 1440 ? "24:00" : minToTime(endMin) });
+    i = j + 1;
+  }
+  return out;
+}
+function totalHours(ranges: Range[]): string {
+  let mins = 0;
+  for (const r of ranges) {
+    const end = r.to === "24:00" ? 1440 : timeToMin(r.to);
+    mins += end - timeToMin(r.from);
+  }
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+function validateRange(r: Range, others: Range[]): string | null {
+  const start = timeToMin(r.from);
+  const end = r.to === "24:00" ? 1440 : timeToMin(r.to);
+  if (end - start < MIN_RANGE_MIN) return "Mínimo 2 horas";
+  for (const o of others) {
+    const os = timeToMin(o.from);
+    const oe = o.to === "24:00" ? 1440 : timeToMin(o.to);
+    if (start < oe && os < end) return "Se traslapa con otra franja";
+  }
+  return null;
+}
 
 const DAYS = [
   { idx: 0, short: "D", long: "Domingo" },
@@ -74,6 +147,7 @@ export default function Schedule() {
   const [scope, setScope] = useState<Scope>("all");
   const [customDays, setCustomDays] = useState<number[]>([1]);
   const [dirty, setDirty] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!data) return;
@@ -103,6 +177,115 @@ export default function Schedule() {
     );
   }
 
+  function dayRanges(wd: number): Range[] {
+    const enabled: string[] = [];
+    for (const t of allTimes) if (slots.get(`${wd}|${t}`)) enabled.push(t);
+    return slotsToRanges(enabled);
+  }
+
+  function writeDayRanges(wd: number, ranges: Range[]) {
+    const enabledSet = new Set(rangesToSlotTimes(ranges));
+    // Ensure all 30-min ticks in the ranges exist in allTimes
+    const newTimes = new Set(allTimes);
+    for (const t of enabledSet) newTimes.add(t);
+    const nextAllTimes = [...newTimes].sort();
+    setAllTimes(nextAllTimes);
+    setSlots((prev) => {
+      const m = new Map(prev);
+      // Clear this weekday for all known times
+      for (const t of nextAllTimes) m.set(`${wd}|${t}`, false);
+      for (const t of enabledSet) m.set(`${wd}|${t}`, true);
+      // Make sure every (wd', t) entry exists for new times so save sends them
+      for (let w = 0; w < 7; w++) {
+        for (const t of nextAllTimes) {
+          const k = `${w}|${t}`;
+          if (!m.has(k)) m.set(k, false);
+        }
+      }
+      return m;
+    });
+    setDirty(true);
+    setErrors((prev) => {
+      const out = { ...prev };
+      for (const k of Object.keys(out)) if (k.startsWith(`${wd}|`)) delete out[k];
+      ranges.forEach((r, i) => {
+        const err = validateRange(r, ranges.filter((_, j) => j !== i));
+        if (err) out[`${wd}|${i}`] = err;
+      });
+      return out;
+    });
+  }
+
+  function addRange(wd: number) {
+    const curr = [...dayRanges(wd)].sort((a, b) => timeToMin(a.from) - timeToMin(b.from));
+    let candidate: Range | null = null;
+    let cursor = 480; // 08:00
+    for (const r of curr) {
+      const rs = timeToMin(r.from);
+      if (rs - cursor >= MIN_RANGE_MIN) {
+        candidate = { from: minToTime(cursor), to: minToTime(cursor + MIN_RANGE_MIN) };
+        break;
+      }
+      cursor = Math.max(cursor, r.to === "24:00" ? 1440 : timeToMin(r.to));
+    }
+    if (!candidate && 1440 - cursor >= MIN_RANGE_MIN) {
+      candidate = {
+        from: minToTime(cursor),
+        to: cursor + MIN_RANGE_MIN === 1440 ? "24:00" : minToTime(cursor + MIN_RANGE_MIN),
+      };
+    }
+    if (!candidate) {
+      cursor = 0;
+      for (const r of curr) {
+        const rs = timeToMin(r.from);
+        if (rs - cursor >= MIN_RANGE_MIN) {
+          candidate = { from: minToTime(cursor), to: minToTime(cursor + MIN_RANGE_MIN) };
+          break;
+        }
+        cursor = Math.max(cursor, r.to === "24:00" ? 1440 : timeToMin(r.to));
+      }
+    }
+    if (!candidate) {
+      toast.error("No hay espacio para otra franja");
+      return;
+    }
+    writeDayRanges(wd, [...curr, candidate]);
+  }
+
+  function removeRange(wd: number, idx: number) {
+    writeDayRanges(wd, dayRanges(wd).filter((_, i) => i !== idx));
+  }
+
+  function setRangeField(wd: number, idx: number, field: "from" | "to", value: string) {
+    writeDayRanges(
+      wd,
+      dayRanges(wd).map((r, i) => (i === idx ? { ...r, [field]: value } : r)),
+    );
+  }
+
+  function copyDayToAll(srcWd: number) {
+    const src = dayRanges(srcWd);
+    const enabledSet = new Set(rangesToSlotTimes(src));
+    const newTimes = new Set(allTimes);
+    for (const t of enabledSet) newTimes.add(t);
+    const nextAllTimes = [...newTimes].sort();
+    setAllTimes(nextAllTimes);
+    setSlots(() => {
+      const m = new Map<string, boolean>();
+      for (let w = 0; w < 7; w++) {
+        for (const t of nextAllTimes) m.set(`${w}|${t}`, enabledSet.has(t));
+      }
+      return m;
+    });
+    setErrors({});
+    setDirty(true);
+    toast.success("Horario aplicado a todos los días");
+  }
+
+  function clearDay(wd: number) {
+    writeDayRanges(wd, []);
+  }
+
   function onCalendarSelect(dates: Date[] | undefined) {
     const next = (dates ?? []).map(dateToIso).sort();
     setBlocked(next);
@@ -115,6 +298,10 @@ export default function Schedule() {
   }
 
   function save() {
+    if (Object.keys(errors).length > 0) {
+      toast.error("Revisa las franjas con error");
+      return;
+    }
     const payload: Slot[] = [];
     for (let wd = 0; wd < 7; wd++) {
       for (const t of allTimes) {
@@ -249,6 +436,132 @@ export default function Schedule() {
                 )}
               </Card>
 
+              {/* Per-day range editors */}
+              {activeDays.length === 0 ? (
+                <Card className="p-4">
+                  <p className="text-xs text-destructive text-center">
+                    Selecciona al menos un día
+                  </p>
+                </Card>
+              ) : (
+                [...activeDays]
+                  .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
+                  .map((wd) => {
+                    const day = DAYS[wd];
+                    const ranges = dayRanges(wd);
+                    return (
+                      <Card key={wd} className="p-4 space-y-3" data-testid={`day-card-${wd}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h3 className="text-sm font-semibold">{day.long}</h3>
+                            <p className="text-[11px] text-muted-foreground">
+                              {ranges.length === 0
+                                ? "Cerrado"
+                                : `${ranges.length} franja${ranges.length > 1 ? "s" : ""} · ${totalHours(ranges)}`}
+                            </p>
+                          </div>
+                          <div className="flex gap-1 flex-wrap justify-end">
+                            {ranges.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => copyDayToAll(wd)}
+                                className="text-[11px] px-2 py-1 rounded border hover-elevate flex items-center gap-1"
+                                data-testid={`button-copy-all-${wd}`}
+                              >
+                                <Copy className="h-3 w-3" />
+                                Aplicar a todos
+                              </button>
+                            )}
+                            {ranges.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => clearDay(wd)}
+                                className="text-[11px] px-2 py-1 rounded border hover-elevate text-destructive"
+                                data-testid={`button-clear-day-${wd}`}
+                              >
+                                Cerrar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {ranges.length === 0 ? null : (
+                          <div className="space-y-2">
+                            {ranges.map((r, i) => {
+                              const errKey = `${wd}|${i}`;
+                              const err = errors[errKey];
+                              return (
+                                <div key={i} className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <Select
+                                      value={r.from}
+                                      onValueChange={(v) => setRangeField(wd, i, "from", v)}
+                                    >
+                                      <SelectTrigger
+                                        className="flex-1 h-9"
+                                        data-testid={`from-${wd}-${i}`}
+                                      >
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="max-h-64">
+                                        {FROM_OPTIONS.map((t) => (
+                                          <SelectItem key={t} value={t}>
+                                            {t}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <span className="text-muted-foreground text-sm">a</span>
+                                    <Select
+                                      value={r.to}
+                                      onValueChange={(v) => setRangeField(wd, i, "to", v)}
+                                    >
+                                      <SelectTrigger
+                                        className="flex-1 h-9"
+                                        data-testid={`to-${wd}-${i}`}
+                                      >
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="max-h-64">
+                                        {TO_OPTIONS.map((t) => (
+                                          <SelectItem key={t} value={t}>
+                                            {t}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeRange(wd, i)}
+                                      className="text-muted-foreground hover-elevate p-2 rounded"
+                                      aria-label="Quitar franja"
+                                      data-testid={`remove-${wd}-${i}`}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                  {err && (
+                                    <p className="text-[11px] text-destructive pl-1">{err}</p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => addRange(wd)}
+                          className="w-full text-xs py-2 rounded-md border border-dashed hover-elevate flex items-center justify-center gap-1.5 text-muted-foreground"
+                          data-testid={`add-range-${wd}`}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Agregar franja
+                        </button>
+                      </Card>
+                    );
+                  })
+              )}
             </TabsContent>
 
             {/* ---------------- DÍAS NO LABORABLES ---------------- */}
