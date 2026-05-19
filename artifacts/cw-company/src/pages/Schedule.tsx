@@ -384,7 +384,7 @@ export default function Schedule() {
 
             {/* ---------------- DÍAS NO LABORABLES ---------------- */}
             <TabsContent value="blocked" className="space-y-4 mt-0">
-              <Card className="p-2 flex justify-center">
+              <Card className="p-2">
                 <Calendar
                   mode="multiple"
                   selected={blockedDates}
@@ -394,6 +394,8 @@ export default function Schedule() {
                   showOutsideDays
                   disabled={{ before: new Date(new Date().setHours(0, 0, 0, 0)) }}
                   data-testid="calendar-blocked"
+                  className="w-full [--cell-size:2.75rem]"
+                  classNames={{ root: "w-full", month: "w-full flex flex-col gap-3" }}
                 />
               </Card>
 
