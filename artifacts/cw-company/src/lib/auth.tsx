@@ -1,5 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { setAuthTokenGetter, login as apiLogin, logout as apiLogout, getMe } from "@workspace/api-client-react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  setAuthTokenGetter,
+  login as apiLogin,
+  logout as apiLogout,
+  getMe,
+} from "@workspace/api-client-react";
+import { AuthContext, type AuthUser } from "./auth-context";
+
+export { useAuth, type AuthUser, type AuthContextValue } from "./auth-context";
 
 const TOKEN_KEY = "cw_token";
 
@@ -7,24 +15,6 @@ let currentToken: string | null =
   typeof window !== "undefined" ? window.localStorage.getItem(TOKEN_KEY) : null;
 
 setAuthTokenGetter(() => currentToken);
-
-export type AuthUser = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: string;
-  companyId: string | null;
-};
-
-type AuthContextValue = {
-  user: AuthUser | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -78,10 +68,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
 }
