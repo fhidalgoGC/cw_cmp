@@ -423,7 +423,7 @@ export default function Schedule() {
                     Toca un día en el calendario para marcarlo como no laborable
                   </p>
                 ) : (
-                  <ul className="space-y-1.5">
+                  <ul className="space-y-1.5 max-h-[11rem] overflow-y-auto pr-1">
                     {blocked.map((d) => (
                       <li
                         key={d}
