@@ -144,8 +144,7 @@ export default function Schedule() {
   const [slots, setSlots] = useState<Map<string, boolean>>(new Map());
   const [allTimes, setAllTimes] = useState<string[]>(DEFAULT_TIMES);
   const [blocked, setBlocked] = useState<string[]>([]);
-  const [scope, setScope] = useState<Scope>("all");
-  const [customDays, setCustomDays] = useState<number[]>([1]);
+  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [dirty, setDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -167,10 +166,7 @@ export default function Schedule() {
 
     // Seed the working ranges from the first active day using the fresh map
     // (cannot rely on `slots` state — it's still the previous render's value).
-    const seedDay =
-      scope === "custom"
-        ? customDays[0] ?? null
-        : SCOPES.find((s) => s.value === scope)!.days[0] ?? null;
+    const seedDay = [...selectedDays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))[0];
     if (seedDay == null) {
       setRanges([]);
     } else {
@@ -181,38 +177,52 @@ export default function Schedule() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  const activeDays = useMemo(() => {
-    if (scope === "custom") return customDays;
-    return SCOPES.find((s) => s.value === scope)!.days;
-  }, [scope, customDays]);
+  const activeDays = selectedDays;
 
-  function toggleCustomDay(d: number) {
-    setCustomDays((curr) =>
-      curr.includes(d) ? curr.filter((x) => x !== d) : [...curr, d].sort(),
+  const activeScope: Scope = useMemo(() => {
+    const key = [...selectedDays].sort((a, b) => a - b).join(",");
+    for (const s of SCOPES) {
+      if (s.value === "custom") continue;
+      if ([...s.days].sort((a, b) => a - b).join(",") === key) return s.value;
+    }
+    return "custom";
+  }, [selectedDays]);
+
+  function toggleDay(d: number) {
+    setSelectedDays((curr) =>
+      curr.includes(d) ? curr.filter((x) => x !== d) : [...curr, d].sort((a, b) => a - b),
     );
+  }
+
+  function applyPreset(s: Scope) {
+    const preset = SCOPES.find((x) => x.value === s)!;
+    if (s === "custom") {
+      // "Personalizado" by itself just keeps current selection.
+      return;
+    }
+    setSelectedDays([...preset.days].sort((a, b) => a - b));
   }
 
   // ---- Single working list of ranges that applies to the active days ----
   const [ranges, setRanges] = useState<Range[]>([]);
 
-  // When the scope (or custom-days picker) changes, reload the working list
-  // from the first active day in the *current* edit state so the user sees
-  // what those days currently hold. Initial load is seeded in the data
-  // hydration effect above.
+  // When the day selection changes, reload the working list from the first
+  // active day in the *current* edit state. Initial load is seeded in the
+  // data hydration effect above.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!data) return;
-    if (activeDays.length === 0) {
+    if (selectedDays.length === 0) {
       setRanges([]);
       setErrors({});
       return;
     }
-    const wd = activeDays[0];
+    const wd = [...selectedDays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))[0];
     const enabled: string[] = [];
     for (const t of allTimes) if (slots.get(`${wd}|${t}`)) enabled.push(t);
     setRanges(slotsToRanges(enabled));
     setErrors({});
-  }, [scope, customDays]);
+  }, [selectedDays]);
 
   function applyRangesToActiveDays(nextRanges: Range[]) {
     const enabledSet = new Set(rangesToSlotTimes(nextRanges));
@@ -343,16 +353,15 @@ export default function Schedule() {
   const blockedDates = useMemo(() => blocked.map(isoToDate), [blocked]);
 
   const activeDayLabel = useMemo(() => {
-    if (scope !== "custom") {
-      return SCOPES.find((s) => s.value === scope)!.label.toLowerCase();
-    }
     if (activeDays.length === 0) return "—";
-    if (activeDays.length === 7) return "todos los días";
+    if (activeScope !== "custom") {
+      return SCOPES.find((s) => s.value === activeScope)!.label.toLowerCase();
+    }
     return [...activeDays]
       .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
       .map((d) => DAYS[d].long.slice(0, 3).toLowerCase())
       .join(", ");
-  }, [scope, activeDays]);
+  }, [activeScope, activeDays]);
 
   return (
     <AppShell>
@@ -424,10 +433,10 @@ export default function Schedule() {
                     <button
                       key={s.value}
                       type="button"
-                      onClick={() => setScope(s.value)}
+                      onClick={() => applyPreset(s.value)}
                       data-testid={`scope-${s.value}`}
                       className={`text-xs py-2 rounded-md border hover-elevate active-elevate-2 ${
-                        scope === s.value
+                        activeScope === s.value
                           ? "bg-primary text-primary-foreground border-primary"
                           : "bg-card"
                       }`}
@@ -437,33 +446,31 @@ export default function Schedule() {
                   ))}
                 </div>
 
-                {scope === "custom" && (
-                  <div className="pt-1">
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Selecciona los días a editar
-                    </p>
-                    <div className="grid grid-cols-7 gap-1">
-                      {DAYS.map((d) => {
-                        const sel = customDays.includes(d.idx);
-                        return (
-                          <button
-                            key={d.idx}
-                            type="button"
-                            onClick={() => toggleCustomDay(d.idx)}
-                            data-testid={`day-${d.idx}`}
-                            className={`text-xs py-2 rounded-md border hover-elevate active-elevate-2 ${
-                              sel
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-card"
-                            }`}
-                          >
-                            {d.short}
-                          </button>
-                        );
-                      })}
-                    </div>
+                <div className="pt-1">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Días seleccionados
+                  </p>
+                  <div className="grid grid-cols-7 gap-1">
+                    {DAYS.map((d) => {
+                      const sel = selectedDays.includes(d.idx);
+                      return (
+                        <button
+                          key={d.idx}
+                          type="button"
+                          onClick={() => toggleDay(d.idx)}
+                          data-testid={`day-${d.idx}`}
+                          className={`text-xs py-2 rounded-md border hover-elevate active-elevate-2 ${
+                            sel
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-card"
+                          }`}
+                        >
+                          {d.short}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
               </Card>
 
               {/* Single franjas editor — applies to the selected days */}
