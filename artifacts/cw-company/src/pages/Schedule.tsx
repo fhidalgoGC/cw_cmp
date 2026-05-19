@@ -145,6 +145,7 @@ export default function Schedule() {
   const [allTimes, setAllTimes] = useState<string[]>(DEFAULT_TIMES);
   const [blocked, setBlocked] = useState<string[]>([]);
   const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [scopeOverride, setScopeOverride] = useState<Scope | null>(null);
   const [dirty, setDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -179,7 +180,7 @@ export default function Schedule() {
 
   const activeDays = selectedDays;
 
-  const activeScope: Scope = useMemo(() => {
+  const derivedScope: Scope = useMemo(() => {
     const key = [...selectedDays].sort((a, b) => a - b).join(",");
     for (const s of SCOPES) {
       if (s.value === "custom") continue;
@@ -188,19 +189,21 @@ export default function Schedule() {
     return "custom";
   }, [selectedDays]);
 
+  const activeScope: Scope = scopeOverride ?? derivedScope;
+
   function toggleDay(d: number) {
+    setScopeOverride(null);
     setSelectedDays((curr) =>
       curr.includes(d) ? curr.filter((x) => x !== d) : [...curr, d].sort((a, b) => a - b),
     );
   }
 
   function applyPreset(s: Scope) {
-    const preset = SCOPES.find((x) => x.value === s)!;
-    if (s === "custom") {
-      // "Personalizado" by itself just keeps current selection.
-      return;
+    setScopeOverride(s);
+    if (s !== "custom") {
+      const preset = SCOPES.find((x) => x.value === s)!;
+      setSelectedDays([...preset.days].sort((a, b) => a - b));
     }
-    setSelectedDays([...preset.days].sort((a, b) => a - b));
   }
 
   // ---- Single working list of ranges that applies to the active days ----
