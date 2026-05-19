@@ -499,12 +499,12 @@ export default function Schedule() {
                     className="space-y-3"
                     data-testid={`group-${g.id}`}
                   >
-                    {/* Horario header */}
-                    <div className="flex items-center justify-between px-1 pt-1">
-                      <h3 className="text-sm font-semibold">
-                        Horario {gIdx + 1}
-                      </h3>
-                      {groups.length > 1 && (
+                    {/* Horario header — solo cuando hay más de uno */}
+                    {groups.length > 1 && (
+                      <div className="flex items-center justify-between px-1 pt-1">
+                        <h3 className="text-sm font-semibold">
+                          Horario {gIdx + 1}
+                        </h3>
                         <button
                           type="button"
                           onClick={() => removeGroup(g.id)}
@@ -515,17 +515,12 @@ export default function Schedule() {
                           <Trash2 className="h-3.5 w-3.5" />
                           Eliminar
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* Días card */}
                     <Card className="p-4 space-y-3" data-testid={`days-card-${g.id}`}>
-                      <div>
-                        <h4 className="text-sm font-semibold">Días</h4>
-                        <p className="text-[11px] text-muted-foreground">
-                          Aplica este horario a {groupDayLabel(g, override)}
-                        </p>
-                      </div>
+                      <h4 className="text-sm font-semibold">Aplicar a</h4>
 
                       <div className="grid grid-cols-2 gap-2">
                         {SCOPES.map((s) => (
@@ -545,34 +540,40 @@ export default function Schedule() {
                         ))}
                       </div>
 
-                      <div className="grid grid-cols-7 gap-1">
-                        {DAYS.map((d) => {
-                          const sel = g.days.includes(d.idx);
-                          const inOther =
-                            !sel &&
-                            groups.some(
-                              (other) =>
-                                other.id !== g.id && other.days.includes(d.idx),
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Días seleccionados
+                        </p>
+                        <div className="grid grid-cols-7 gap-1">
+                          {DAYS.map((d) => {
+                            const sel = g.days.includes(d.idx);
+                            const inOther =
+                              !sel &&
+                              groups.some(
+                                (other) =>
+                                  other.id !== g.id &&
+                                  other.days.includes(d.idx),
+                              );
+                            return (
+                              <button
+                                key={d.idx}
+                                type="button"
+                                onClick={() => toggleDayInGroup(g.id, d.idx)}
+                                data-testid={`day-${g.id}-${d.idx}`}
+                                title={inOther ? "Asignado a otro horario" : undefined}
+                                className={`text-xs py-2 rounded-md border hover-elevate active-elevate-2 ${
+                                  sel
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : inOther
+                                      ? "bg-muted text-muted-foreground"
+                                      : "bg-card"
+                                }`}
+                              >
+                                {d.short}
+                              </button>
                             );
-                          return (
-                            <button
-                              key={d.idx}
-                              type="button"
-                              onClick={() => toggleDayInGroup(g.id, d.idx)}
-                              data-testid={`day-${g.id}-${d.idx}`}
-                              title={inOther ? "Asignado a otro horario" : undefined}
-                              className={`text-xs py-2 rounded-md border hover-elevate active-elevate-2 ${
-                                sel
-                                  ? "bg-primary text-primary-foreground border-primary"
-                                  : inOther
-                                    ? "bg-muted text-muted-foreground"
-                                    : "bg-card"
-                              }`}
-                            >
-                              {d.short}
-                            </button>
-                          );
-                        })}
+                          })}
+                        </div>
                       </div>
                     </Card>
 
@@ -581,15 +582,27 @@ export default function Schedule() {
                       className="p-4 space-y-3"
                       data-testid={`ranges-card-${g.id}`}
                     >
-                      <div>
-                        <h4 className="text-sm font-semibold">Franjas horarias</h4>
-                        <p className="text-[11px] text-muted-foreground">
-                          {g.days.length === 0
-                            ? "Selecciona al menos un día"
-                            : g.ranges.length === 0
-                              ? "Sin franjas — los días seleccionados quedarán cerrados"
-                              : `${g.ranges.length} franja${g.ranges.length > 1 ? "s" : ""} · ${totalHours(g.ranges)}`}
-                        </p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="text-sm font-semibold">Franjas horarias</h4>
+                          <p className="text-[11px] text-muted-foreground">
+                            {g.days.length === 0
+                              ? "Selecciona al menos un día"
+                              : g.ranges.length === 0
+                                ? "Sin franjas — los días seleccionados quedarán cerrados"
+                                : `${g.ranges.length} franja${g.ranges.length > 1 ? "s" : ""} · ${totalHours(g.ranges)} · se aplica a ${groupDayLabel(g, override)}`}
+                          </p>
+                        </div>
+                        {g.days.length > 0 && g.ranges.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setGroupRanges(g.id, [])}
+                            className="text-[11px] px-2 py-1 rounded border hover-elevate text-destructive shrink-0"
+                            data-testid={`button-clear-ranges-${g.id}`}
+                          >
+                            Quitar todas
+                          </button>
+                        )}
                       </div>
 
                       {g.days.length > 0 && g.ranges.length > 0 && (
