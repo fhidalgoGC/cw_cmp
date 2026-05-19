@@ -489,66 +489,62 @@ export default function Schedule() {
                 </p>
               </Card>
 
-              {/* One card per group */}
+              {/* Two cards per group: días/scope + franjas */}
               {groups.map((g, gIdx) => {
                 const override = scopeOverrides[g.id] ?? null;
                 const activeScope: Scope = override ?? derivedScopeFor(g.days);
                 return (
-                  <Card
+                  <div
                     key={g.id}
-                    className="p-4 space-y-3"
+                    className="space-y-3"
                     data-testid={`group-${g.id}`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="text-sm font-semibold">
-                          Horario {gIdx + 1}
-                        </h3>
-                        <p className="text-[11px] text-muted-foreground">
-                          {g.days.length === 0
-                            ? "Sin días asignados"
-                            : g.ranges.length === 0
-                              ? `Sin franjas · ${groupDayLabel(g, override)}`
-                              : `${g.ranges.length} franja${g.ranges.length > 1 ? "s" : ""} · ${totalHours(g.ranges)} · ${groupDayLabel(g, override)}`}
-                        </p>
-                      </div>
+                    {/* Horario header */}
+                    <div className="flex items-center justify-between px-1 pt-1">
+                      <h3 className="text-sm font-semibold">
+                        Horario {gIdx + 1}
+                      </h3>
                       {groups.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeGroup(g.id)}
-                          className="text-muted-foreground hover-elevate p-2 rounded shrink-0"
+                          className="text-muted-foreground hover-elevate p-1.5 rounded text-[11px] flex items-center gap-1"
                           aria-label="Eliminar horario"
                           data-testid={`button-remove-group-${g.id}`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Eliminar
                         </button>
                       )}
                     </div>
 
-                    {/* Scope presets */}
-                    <div className="grid grid-cols-2 gap-2">
-                      {SCOPES.map((s) => (
-                        <button
-                          key={s.value}
-                          type="button"
-                          onClick={() => applyPresetToGroup(g.id, s.value)}
-                          data-testid={`scope-${g.id}-${s.value}`}
-                          className={`text-xs py-2 rounded-md border hover-elevate active-elevate-2 ${
-                            activeScope === s.value
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-card"
-                          }`}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
+                    {/* Días card */}
+                    <Card className="p-4 space-y-3" data-testid={`days-card-${g.id}`}>
+                      <div>
+                        <h4 className="text-sm font-semibold">Días</h4>
+                        <p className="text-[11px] text-muted-foreground">
+                          Aplica este horario a {groupDayLabel(g, override)}
+                        </p>
+                      </div>
 
-                    {/* Day chips */}
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Días seleccionados
-                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {SCOPES.map((s) => (
+                          <button
+                            key={s.value}
+                            type="button"
+                            onClick={() => applyPresetToGroup(g.id, s.value)}
+                            data-testid={`scope-${g.id}-${s.value}`}
+                            className={`text-xs py-2 rounded-md border hover-elevate active-elevate-2 ${
+                              activeScope === s.value
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-card"
+                            }`}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+
                       <div className="grid grid-cols-7 gap-1">
                         {DAYS.map((d) => {
                           const sel = g.days.includes(d.idx);
@@ -578,92 +574,110 @@ export default function Schedule() {
                           );
                         })}
                       </div>
-                    </div>
+                    </Card>
 
-                    {/* Ranges */}
-                    {g.days.length > 0 && g.ranges.length > 0 && (
-                      <div className="space-y-2 pt-1">
-                        {g.ranges.map((r, i) => {
-                          const err = errors[`${g.id}|${i}`];
-                          return (
-                            <div key={i} className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <Select
-                                  value={r.from}
-                                  onValueChange={(v) =>
-                                    setRangeField(g.id, i, "from", v)
-                                  }
-                                >
-                                  <SelectTrigger
-                                    className="flex-1 h-9"
-                                    data-testid={`from-${g.id}-${i}`}
-                                  >
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="max-h-64">
-                                    {FROM_OPTIONS.map((t) => (
-                                      <SelectItem key={t} value={t}>
-                                        {t}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <span className="text-muted-foreground text-sm">
-                                  a
-                                </span>
-                                <Select
-                                  value={r.to}
-                                  onValueChange={(v) =>
-                                    setRangeField(g.id, i, "to", v)
-                                  }
-                                >
-                                  <SelectTrigger
-                                    className="flex-1 h-9"
-                                    data-testid={`to-${g.id}-${i}`}
-                                  >
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="max-h-64">
-                                    {TO_OPTIONS.map((t) => (
-                                      <SelectItem key={t} value={t}>
-                                        {t}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <button
-                                  type="button"
-                                  onClick={() => removeRangeFromGroup(g.id, i)}
-                                  className="text-muted-foreground hover-elevate p-2 rounded"
-                                  aria-label="Quitar franja"
-                                  data-testid={`remove-${g.id}-${i}`}
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </div>
-                              {err && (
-                                <p className="text-[11px] text-destructive pl-1">
-                                  {err}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
+                    {/* Franjas card */}
+                    <Card
+                      className="p-4 space-y-3"
+                      data-testid={`ranges-card-${g.id}`}
+                    >
+                      <div>
+                        <h4 className="text-sm font-semibold">Franjas horarias</h4>
+                        <p className="text-[11px] text-muted-foreground">
+                          {g.days.length === 0
+                            ? "Selecciona al menos un día"
+                            : g.ranges.length === 0
+                              ? "Sin franjas — los días seleccionados quedarán cerrados"
+                              : `${g.ranges.length} franja${g.ranges.length > 1 ? "s" : ""} · ${totalHours(g.ranges)}`}
+                        </p>
                       </div>
-                    )}
 
-                    {g.days.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => addRangeToGroup(g.id)}
-                        className="w-full text-xs py-2 rounded-md border border-dashed hover-elevate flex items-center justify-center gap-1.5 text-muted-foreground"
-                        data-testid={`add-range-${g.id}`}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Agregar franja
-                      </button>
-                    )}
-                  </Card>
+                      {g.days.length > 0 && g.ranges.length > 0 && (
+                        <div className="space-y-2">
+                          {g.ranges.map((r, i) => {
+                            const err = errors[`${g.id}|${i}`];
+                            return (
+                              <div key={i} className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Select
+                                    value={r.from}
+                                    onValueChange={(v) =>
+                                      setRangeField(g.id, i, "from", v)
+                                    }
+                                  >
+                                    <SelectTrigger
+                                      className="flex-1 h-9"
+                                      data-testid={`from-${g.id}-${i}`}
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-64">
+                                      {FROM_OPTIONS.map((t) => (
+                                        <SelectItem key={t} value={t}>
+                                          {t}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <span className="text-muted-foreground text-sm">
+                                    a
+                                  </span>
+                                  <Select
+                                    value={r.to}
+                                    onValueChange={(v) =>
+                                      setRangeField(g.id, i, "to", v)
+                                    }
+                                  >
+                                    <SelectTrigger
+                                      className="flex-1 h-9"
+                                      data-testid={`to-${g.id}-${i}`}
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-64">
+                                      {TO_OPTIONS.map((t) => (
+                                        <SelectItem key={t} value={t}>
+                                          {t}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      removeRangeFromGroup(g.id, i)
+                                    }
+                                    className="text-muted-foreground hover-elevate p-2 rounded"
+                                    aria-label="Quitar franja"
+                                    data-testid={`remove-${g.id}-${i}`}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                                {err && (
+                                  <p className="text-[11px] text-destructive pl-1">
+                                    {err}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {g.days.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => addRangeToGroup(g.id)}
+                          className="w-full text-xs py-2 rounded-md border border-dashed hover-elevate flex items-center justify-center gap-1.5 text-muted-foreground"
+                          data-testid={`add-range-${g.id}`}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Agregar franja
+                        </button>
+                      )}
+                    </Card>
+                  </div>
                 );
               })}
 
