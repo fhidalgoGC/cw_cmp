@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "CW Empresa"
+version = "1.0.0"
+id = "artifacts/cw-company"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24170
+
+[services.development]
+run = "pnpm --filter @workspace/cw-company run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cw-company", "run", "build" ]
+publicDir = "artifacts/cw-company/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24170"
+BASE_PATH = "/"

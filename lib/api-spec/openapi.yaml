@@ -3,20 +3,25 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Car Wash - Company (Empresa) API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: profile
+  - name: bookings
+  - name: availability
+  - name: packages
+  - name: services
+  - name: earnings
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +29,721 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Current authenticated user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Invalidate the current session
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResult"
+
+  /company/profile:
+    get:
+      operationId: getCompanyProfile
+      tags: [profile]
+      summary: Get the authenticated company profile
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyProfile"
+    put:
+      operationId: updateCompanyProfile
+      tags: [profile]
+      summary: Update name / phone of the company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyProfileUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyProfile"
+
+  /company/dashboard:
+    get:
+      operationId: getCompanyDashboard
+      tags: [bookings]
+      summary: Wow endpoint - dashboard summary for today
+      parameters:
+        - in: query
+          name: date
+          schema: { type: string }
+          description: "YYYY-MM-DD (default today)"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyDashboard"
+
+  /company/bookings:
+    get:
+      operationId: listCompanyBookings
+      tags: [bookings]
+      summary: List bookings assigned to this company
+      parameters:
+        - in: query
+          name: date
+          schema: { type: string }
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+        - in: query
+          name: companyStatus
+          schema:
+            type: string
+            enum: [pending_acceptance, accepted_by_company, rejected_by_company]
+        - in: query
+          name: status
+          schema:
+            $ref: "#/components/schemas/BookingStatus"
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyBookingList"
+
+  /company/bookings/{bookingId}:
+    get:
+      operationId: getCompanyBooking
+      tags: [bookings]
+      parameters:
+        - in: path
+          name: bookingId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyBooking"
+
+  /company/bookings/{bookingId}/accept:
+    put:
+      operationId: acceptCompanyBooking
+      tags: [bookings]
+      parameters:
+        - in: path
+          name: bookingId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyBooking"
+
+  /company/bookings/{bookingId}/reject:
+    put:
+      operationId: rejectCompanyBooking
+      tags: [bookings]
+      parameters:
+        - in: path
+          name: bookingId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyBooking"
+
+  /company/bookings/{bookingId}/start:
+    put:
+      operationId: startCompanyBooking
+      tags: [bookings]
+      parameters:
+        - in: path
+          name: bookingId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyBooking"
+
+  /company/bookings/{bookingId}/complete:
+    put:
+      operationId: completeCompanyBooking
+      tags: [bookings]
+      parameters:
+        - in: path
+          name: bookingId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyBooking"
+
+  /company/availability:
+    get:
+      operationId: getCompanyAvailability
+      tags: [availability]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyAvailability"
+    put:
+      operationId: updateCompanyAvailability
+      tags: [availability]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyAvailabilityUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyAvailability"
+
+  /company/packages:
+    get:
+      operationId: listCompanyPackages
+      tags: [packages]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyPackageOption"
+    put:
+      operationId: updateCompanyPackages
+      tags: [packages]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyPackagesUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyPackageOption"
+
+  /company/services:
+    get:
+      operationId: listCompanyServices
+      tags: [services]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyServiceOption"
+    put:
+      operationId: updateCompanyServices
+      tags: [services]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyServicesUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyServiceOption"
+
+  /company/earnings:
+    get:
+      operationId: getCompanyEarnings
+      tags: [earnings]
+      summary: Earnings summary (wow endpoint)
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyEarnings"
+
+  /company/earnings/services:
+    get:
+      operationId: listCompanyEarningServices
+      tags: [earnings]
+      summary: Paginated list of billing line items
+      parameters:
+        - in: query
+          name: dateFrom
+          schema: { type: string }
+        - in: query
+          name: dateTo
+          schema: { type: string }
+        - in: query
+          name: paymentStatus
+          schema:
+            type: string
+            enum: [pendiente, pagado]
+        - in: query
+          name: paymentType
+          schema:
+            type: string
+            enum: [directo, membresia]
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyBillingList"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
 
+    MessageResult:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+
+    BookingStatus:
+      type: string
+      enum: [pending, accepted, in_progress, completed, cancelled]
+
+    CatalogRef:
+      type: object
+      required: [id, slug, name]
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+
+    User:
+      type: object
+      required: [id, name, email, phone, role]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        role:
+          type: string
+          enum: [client, company, admin]
+        companyId: { type: ["string", "null"] }
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+
+    AuthResult:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token: { type: string }
+
+    CompanyProfile:
+      type: object
+      required: [id, name, email, phone, active, totalBookings, completedBookings, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        active: { type: boolean }
+        rating: { type: ["number", "null"] }
+        totalBookings: { type: integer }
+        completedBookings: { type: integer }
+        createdAt: { type: string }
+
+    CompanyProfileUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        phone: { type: string }
+
+    CompanyBooking:
+      type: object
+      required:
+        - id
+        - clientName
+        - clientPhone
+        - addressFull
+        - vehicleSize
+        - washType
+        - addOns
+        - date
+        - time
+        - totalPrice
+        - status
+        - companyStatus
+        - createdAt
+      properties:
+        id: { type: string }
+        clientName: { type: string }
+        clientPhone: { type: string }
+        addressFull: { type: string }
+        vehicleSize:
+          $ref: "#/components/schemas/CatalogRef"
+        vehicleBrand: { type: ["string", "null"] }
+        vehicleModel: { type: ["string", "null"] }
+        vehicleColor: { type: ["string", "null"] }
+        vehiclePlate: { type: ["string", "null"] }
+        washType:
+          $ref: "#/components/schemas/CatalogRef"
+        addOns:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogRef"
+        date: { type: string }
+        time: { type: string }
+        totalPrice: { type: number }
+        status:
+          $ref: "#/components/schemas/BookingStatus"
+        companyStatus:
+          type: string
+          enum: [pending_acceptance, accepted_by_company, rejected_by_company]
+        comments: { type: ["string", "null"] }
+        createdAt: { type: string }
+
+    Pagination:
+      type: object
+      required: [total, page, limit, totalPages]
+      properties:
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+        totalPages: { type: integer }
+
+    CompanyBookingList:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyBooking"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    RejectInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string }
+
+    CompanyDashboard:
+      type: object
+      required: [date, summary, nextBooking, upcoming]
+      properties:
+        date: { type: string }
+        summary:
+          type: object
+          required:
+            - total
+            - pendingAcceptance
+            - accepted
+            - inProgress
+            - completed
+            - cancelled
+            - revenueToday
+          properties:
+            total: { type: integer }
+            pendingAcceptance: { type: integer }
+            accepted: { type: integer }
+            inProgress: { type: integer }
+            completed: { type: integer }
+            cancelled: { type: integer }
+            revenueToday: { type: number }
+        nextBooking:
+          anyOf:
+            - $ref: "#/components/schemas/CompanyBooking"
+            - type: "null"
+        upcoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyBooking"
+
+    CompanySlot:
+      type: object
+      required: [time, enabled]
+      properties:
+        time: { type: string }
+        enabled: { type: boolean }
+
+    CompanyAvailability:
+      type: object
+      required: [slots, blockedDates]
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanySlot"
+        blockedDates:
+          type: array
+          items: { type: string }
+
+    CompanyAvailabilityUpdate:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanySlot"
+        blockedDates:
+          type: array
+          items: { type: string }
+
+    CompanyPackageOption:
+      type: object
+      required: [package, name, washType, active, color]
+      properties:
+        package:
+          $ref: "#/components/schemas/CatalogRef"
+        name: { type: string }
+        color: { type: string }
+        washType:
+          $ref: "#/components/schemas/CatalogRef"
+        active: { type: boolean }
+
+    CompanyPackageToggle:
+      type: object
+      required: [packageId, active]
+      properties:
+        packageId: { type: string }
+        active: { type: boolean }
+
+    CompanyPackagesUpdate:
+      type: object
+      required: [packages]
+      properties:
+        packages:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyPackageToggle"
+
+    CompanyServiceOption:
+      type: object
+      required: [service, name, price, active, kind]
+      properties:
+        service:
+          $ref: "#/components/schemas/CatalogRef"
+        name: { type: string }
+        price: { type: number }
+        active: { type: boolean }
+        kind:
+          type: string
+          enum: [wash_type, add_on]
+
+    CompanyServiceToggle:
+      type: object
+      required: [serviceId, active]
+      properties:
+        serviceId: { type: string }
+        active: { type: boolean }
+
+    CompanyServicesUpdate:
+      type: object
+      required: [services]
+      properties:
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyServiceToggle"
+
+    CompanyEarnings:
+      type: object
+      required:
+        - dateFrom
+        - dateTo
+        - totalServices
+        - totalAmount
+        - pending
+        - paid
+        - byType
+        - dailySeries
+      properties:
+        dateFrom: { type: string }
+        dateTo: { type: string }
+        totalServices: { type: integer }
+        totalAmount: { type: number }
+        pending: { type: number }
+        paid: { type: number }
+        byType:
+          type: object
+          required: [directo, membresia]
+          properties:
+            directo: { type: number }
+            membresia: { type: number }
+        dailySeries:
+          type: array
+          items:
+            type: object
+            required: [date, amount, services]
+            properties:
+              date: { type: string }
+              amount: { type: number }
+              services: { type: integer }
+
+    CompanyBilling:
+      type: object
+      required:
+        - id
+        - bookingId
+        - date
+        - time
+        - clientName
+        - vehicleSize
+        - washType
+        - addOns
+        - amount
+        - paymentType
+        - paymentStatus
+      properties:
+        id: { type: string }
+        bookingId: { type: string }
+        date: { type: string }
+        time: { type: string }
+        clientName: { type: string }
+        vehicleSize:
+          $ref: "#/components/schemas/CatalogRef"
+        washType:
+          $ref: "#/components/schemas/CatalogRef"
+        addOns:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogRef"
+        amount: { type: number }
+        paymentType:
+          type: string
+          enum: [directo, membresia]
+        paymentStatus:
+          type: string
+          enum: [pendiente, pagado]
+        paidAt: { type: ["string", "null"] }
+
+    CompanyBillingList:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyBilling"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
