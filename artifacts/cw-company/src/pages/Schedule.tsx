@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Clock, CalendarOff, X, Plus } from "lucide-react";
+import { Clock, CalendarOff, X, Plus, Trash2 } from "lucide-react";
 import { formatDateLong } from "@/lib/format";
 import { toast } from "sonner";
 import { es } from "date-fns/locale";
@@ -24,6 +24,7 @@ import { es } from "date-fns/locale";
 type Slot = { weekday: number; time: string; enabled: boolean };
 type Scope = "all" | "weekdays" | "weekends" | "custom";
 type Range = { from: string; to: string };
+type Group = { id: string; days: number[]; ranges: Range[] };
 
 const MIN_RANGE_MIN = 120; // 2h minimum
 
@@ -129,6 +130,31 @@ function dateToIso(d: Date): string {
   return `${y}-${m}-${dd}`;
 }
 
+function newId(): string {
+  return `g_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function derivedScopeFor(days: number[]): Scope {
+  const key = [...days].sort((a, b) => a - b).join(",");
+  for (const s of SCOPES) {
+    if (s.value === "custom") continue;
+    if ([...s.days].sort((a, b) => a - b).join(",") === key) return s.value;
+  }
+  return "custom";
+}
+
+function groupDayLabel(g: Group, override: Scope | null): string {
+  if (g.days.length === 0) return "ningún día";
+  const scope = override ?? derivedScopeFor(g.days);
+  if (scope !== "custom") {
+    return SCOPES.find((s) => s.value === scope)!.label.toLowerCase();
+  }
+  return [...g.days]
+    .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
+    .map((d) => DAYS[d].long.slice(0, 3).toLowerCase())
+    .join(", ");
+}
+
 export default function Schedule() {
   const { data, isLoading, refetch } = useGetCompanyAvailability();
   const update = useUpdateCompanyAvailability({
@@ -141,134 +167,134 @@ export default function Schedule() {
     },
   });
 
-  const [slots, setSlots] = useState<Map<string, boolean>>(new Map());
-  const [allTimes, setAllTimes] = useState<string[]>(DEFAULT_TIMES);
+  const [groups, setGroups] = useState<Group[]>([
+    { id: "g_init", days: [0, 1, 2, 3, 4, 5, 6], ranges: [] },
+  ]);
+  const [scopeOverrides, setScopeOverrides] = useState<Record<string, Scope | null>>({});
   const [blocked, setBlocked] = useState<string[]>([]);
-  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
-  const [scopeOverride, setScopeOverride] = useState<Scope | null>(null);
   const [dirty, setDirty] = useState(false);
+  // errors keyed by `${groupId}|${rangeIdx}`
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Hydrate from server: build groups by grouping weekdays with the same
+  // enabled-times signature.
   useEffect(() => {
     if (!data) return;
     const incoming = ((data as any).slots ?? []) as Slot[];
-    const map = new Map<string, boolean>();
-    const timeSet = new Set<string>(DEFAULT_TIMES);
-    for (const s of incoming) timeSet.add(s.time);
-    const times = [...timeSet].sort();
+    const perDay: string[][] = Array.from({ length: 7 }, () => []);
+    for (const s of incoming) if (s.enabled) perDay[s.weekday].push(s.time);
+    const sigToDays = new Map<string, number[]>();
     for (let wd = 0; wd < 7; wd++) {
-      for (const t of times) map.set(`${wd}|${t}`, false);
+      const sig = [...perDay[wd]].sort().join(",");
+      if (!sig) continue; // closed day → not part of any group
+      if (!sigToDays.has(sig)) sigToDays.set(sig, []);
+      sigToDays.get(sig)!.push(wd);
     }
-    for (const s of incoming) map.set(`${s.weekday}|${s.time}`, s.enabled);
-    setSlots(map);
-    setAllTimes(times);
+    const next: Group[] = [];
+    for (const [sig, days] of sigToDays) {
+      const enabled = sig.split(",").filter(Boolean);
+      next.push({ id: newId(), days, ranges: slotsToRanges(enabled) });
+    }
+    if (next.length === 0) {
+      // No enabled slots saved → start with one empty group the user can fill in
+      next.push({ id: newId(), days: [], ranges: [] });
+    }
+    setGroups(next);
+    setScopeOverrides({});
+    setErrors({});
     setBlocked(((data as any).blockedDates ?? []) as string[]);
     setDirty(false);
-
-    // Seed the working ranges from the first active day using the fresh map
-    // (cannot rely on `slots` state — it's still the previous render's value).
-    const seedDay = [...selectedDays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))[0];
-    if (seedDay == null) {
-      setRanges([]);
-    } else {
-      const enabled = times.filter((t) => map.get(`${seedDay}|${t}`));
-      setRanges(slotsToRanges(enabled));
-    }
-    setErrors({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  const activeDays = selectedDays;
+  // Union of DEFAULT_TIMES + every 30-min tick used by any group's ranges.
+  const allTimes = useMemo(() => {
+    const s = new Set<string>(DEFAULT_TIMES);
+    for (const g of groups) for (const t of rangesToSlotTimes(g.ranges)) s.add(t);
+    return [...s].sort();
+  }, [groups]);
 
-  const derivedScope: Scope = useMemo(() => {
-    const key = [...selectedDays].sort((a, b) => a - b).join(",");
-    for (const s of SCOPES) {
-      if (s.value === "custom") continue;
-      if ([...s.days].sort((a, b) => a - b).join(",") === key) return s.value;
-    }
-    return "custom";
-  }, [selectedDays]);
-
-  const activeScope: Scope = scopeOverride ?? derivedScope;
-
-  function toggleDay(d: number) {
-    setScopeOverride(null);
-    setSelectedDays((curr) =>
-      curr.includes(d) ? curr.filter((x) => x !== d) : [...curr, d].sort((a, b) => a - b),
-    );
-  }
-
-  function applyPreset(s: Scope) {
-    setScopeOverride(s);
-    if (s !== "custom") {
-      const preset = SCOPES.find((x) => x.value === s)!;
-      setSelectedDays([...preset.days].sort((a, b) => a - b));
-    }
-  }
-
-  // ---- Single working list of ranges that applies to the active days ----
-  const [ranges, setRanges] = useState<Range[]>([]);
-
-  // When the day selection changes, reload the working list from the first
-  // active day in the *current* edit state. Initial load is seeded in the
-  // data hydration effect above.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!data) return;
-    if (selectedDays.length === 0) {
-      setRanges([]);
-      setErrors({});
-      return;
-    }
-    const wd = [...selectedDays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))[0];
-    const enabled: string[] = [];
-    for (const t of allTimes) if (slots.get(`${wd}|${t}`)) enabled.push(t);
-    setRanges(slotsToRanges(enabled));
-    setErrors({});
-  }, [selectedDays]);
-
-  function applyRangesToActiveDays(nextRanges: Range[]) {
-    const enabledSet = new Set(rangesToSlotTimes(nextRanges));
-    const newTimes = new Set(allTimes);
-    for (const t of enabledSet) newTimes.add(t);
-    const nextAllTimes = [...newTimes].sort();
-    setAllTimes(nextAllTimes);
-    setSlots((prev) => {
-      const m = new Map(prev);
-      // Ensure every (wd, t) entry exists for newly introduced times
-      for (let w = 0; w < 7; w++) {
-        for (const t of nextAllTimes) {
-          const k = `${w}|${t}`;
-          if (!m.has(k)) m.set(k, false);
+  function toggleDayInGroup(groupId: string, day: number) {
+    const affectedOthers: string[] = [];
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          const has = g.days.includes(day);
+          return {
+            ...g,
+            days: has
+              ? g.days.filter((d) => d !== day)
+              : [...g.days, day].sort((a, b) => a - b),
+          };
         }
-      }
-      // Overwrite each active day with the new ranges
-      for (const wd of activeDays) {
-        for (const t of nextAllTimes) m.set(`${wd}|${t}`, enabledSet.has(t));
-      }
-      return m;
+        // Day is exclusive — remove from any other group
+        if (g.days.includes(day)) {
+          affectedOthers.push(g.id);
+          return { ...g, days: g.days.filter((d) => d !== day) };
+        }
+        return g;
+      }),
+    );
+    setScopeOverrides((prev) => {
+      const out = { ...prev, [groupId]: null };
+      // Drop any stale override on groups whose days just changed indirectly
+      for (const id of affectedOthers) out[id] = null;
+      return out;
     });
     setDirty(true);
-    setErrors(() => {
+  }
+
+  function applyPresetToGroup(groupId: string, s: Scope) {
+    if (s === "custom") {
+      setScopeOverrides((prev) => ({ ...prev, [groupId]: s }));
+      setDirty(true);
+      return;
+    }
+    const presetDays = SCOPES.find((x) => x.value === s)!.days;
+    const presetSet = new Set(presetDays);
+    const affectedOthers: string[] = [];
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          return { ...g, days: [...presetDays].sort((a, b) => a - b) };
+        }
+        const next = g.days.filter((d) => !presetSet.has(d));
+        if (next.length !== g.days.length) affectedOthers.push(g.id);
+        return { ...g, days: next };
+      }),
+    );
+    setScopeOverrides((prev) => {
+      const out = { ...prev, [groupId]: s };
+      for (const id of affectedOthers) out[id] = null;
+      return out;
+    });
+    setDirty(true);
+  }
+
+  function setGroupRanges(groupId: string, nextRanges: Range[]) {
+    setGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, ranges: nextRanges } : g)),
+    );
+    setDirty(true);
+    setErrors((prev) => {
       const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (!k.startsWith(`${groupId}|`)) out[k] = v;
+      }
       nextRanges.forEach((r, i) => {
         const err = validateRange(
           r,
           nextRanges.filter((_, j) => j !== i),
         );
-        if (err) out[`${i}`] = err;
+        if (err) out[`${groupId}|${i}`] = err;
       });
       return out;
     });
   }
 
-  function setRangesAndApply(nextRanges: Range[]) {
-    setRanges(nextRanges);
-    applyRangesToActiveDays(nextRanges);
-  }
-
-  function addRange() {
-    const curr = [...ranges].sort((a, b) => timeToMin(a.from) - timeToMin(b.from));
+  function addRangeToGroup(groupId: string) {
+    const g = groups.find((x) => x.id === groupId);
+    if (!g) return;
+    const curr = [...g.ranges].sort((a, b) => timeToMin(a.from) - timeToMin(b.from));
     let candidate: Range | null = null;
     let cursor = 480; // 08:00
     for (const r of curr) {
@@ -300,21 +326,52 @@ export default function Schedule() {
       toast.error("No hay espacio para otra franja");
       return;
     }
-    setRangesAndApply([...ranges, candidate]);
+    setGroupRanges(groupId, [...g.ranges, candidate]);
   }
 
-  function removeRange(idx: number) {
-    setRangesAndApply(ranges.filter((_, i) => i !== idx));
-  }
-
-  function setRangeField(idx: number, field: "from" | "to", value: string) {
-    setRangesAndApply(
-      ranges.map((r, i) => (i === idx ? { ...r, [field]: value } : r)),
+  function removeRangeFromGroup(groupId: string, idx: number) {
+    const g = groups.find((x) => x.id === groupId);
+    if (!g) return;
+    setGroupRanges(
+      groupId,
+      g.ranges.filter((_, i) => i !== idx),
     );
   }
 
-  function clearRanges() {
-    setRangesAndApply([]);
+  function setRangeField(
+    groupId: string,
+    idx: number,
+    field: "from" | "to",
+    value: string,
+  ) {
+    const g = groups.find((x) => x.id === groupId);
+    if (!g) return;
+    setGroupRanges(
+      groupId,
+      g.ranges.map((r, i) => (i === idx ? { ...r, [field]: value } : r)),
+    );
+  }
+
+  function removeGroup(groupId: string) {
+    setGroups((prev) => prev.filter((g) => g.id !== groupId));
+    setScopeOverrides((prev) => {
+      const out = { ...prev };
+      delete out[groupId];
+      return out;
+    });
+    setErrors((prev) => {
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (!k.startsWith(`${groupId}|`)) out[k] = v;
+      }
+      return out;
+    });
+    setDirty(true);
+  }
+
+  function addGroup() {
+    setGroups((prev) => [...prev, { id: newId(), days: [], ranges: [] }]);
+    setDirty(true);
   }
 
   function onCalendarSelect(dates: Date[] | undefined) {
@@ -329,42 +386,45 @@ export default function Schedule() {
   }
 
   function save() {
-    if (Object.keys(errors).length > 0) {
+    // Only block on errors belonging to groups that have days assigned —
+    // errors on dayless groups don't affect the saved payload.
+    const groupsWithDays = new Set(
+      groups.filter((g) => g.days.length > 0).map((g) => g.id),
+    );
+    const blockingErrors = Object.keys(errors).filter((k) =>
+      groupsWithDays.has(k.split("|")[0]),
+    );
+    if (blockingErrors.length > 0) {
       toast.error("Revisa las franjas con error");
       return;
     }
+    const groupByDay = new Map<number, Group>();
+    for (const g of groups) for (const d of g.days) groupByDay.set(d, g);
     const payload: Slot[] = [];
     for (let wd = 0; wd < 7; wd++) {
+      const g = groupByDay.get(wd);
+      const enabledSet = g
+        ? new Set(rangesToSlotTimes(g.ranges))
+        : new Set<string>();
       for (const t of allTimes) {
-        payload.push({ weekday: wd, time: t, enabled: !!slots.get(`${wd}|${t}`) });
+        payload.push({ weekday: wd, time: t, enabled: enabledSet.has(t) });
       }
     }
     update.mutate({ data: { slots: payload, blockedDates: blocked } });
     setDirty(false);
   }
 
-  const summary = useMemo(
-    () =>
-      DAYS.map((d) => {
-        let count = 0;
-        for (const t of allTimes) if (slots.get(`${d.idx}|${t}`)) count++;
-        return { ...d, count };
-      }),
-    [slots, allTimes],
-  );
+  // Per-day hours summary computed from groups.
+  const summary = useMemo(() => {
+    const groupByDay = new Map<number, Group>();
+    for (const g of groups) for (const d of g.days) groupByDay.set(d, g);
+    return DAYS.map((d) => {
+      const g = groupByDay.get(d.idx);
+      return { ...d, label: g && g.ranges.length > 0 ? totalHours(g.ranges) : "—" };
+    });
+  }, [groups]);
 
   const blockedDates = useMemo(() => blocked.map(isoToDate), [blocked]);
-
-  const activeDayLabel = useMemo(() => {
-    if (activeDays.length === 0) return "—";
-    if (activeScope !== "custom") {
-      return SCOPES.find((s) => s.value === activeScope)!.label.toLowerCase();
-    }
-    return [...activeDays]
-      .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
-      .map((d) => DAYS[d].long.slice(0, 3).toLowerCase())
-      .join(", ");
-  }, [activeScope, activeDays]);
 
   return (
     <AppShell>
@@ -405,7 +465,7 @@ export default function Schedule() {
 
             {/* ---------------- FRANJAS HORARIAS ---------------- */}
             <TabsContent value="hours" className="space-y-4 mt-0">
-              {/* Per-day summary */}
+              {/* Per-day hours summary */}
               <Card className="p-3">
                 <div className="grid grid-cols-7 gap-1 text-center">
                   {summary.map((d) => (
@@ -414,168 +474,209 @@ export default function Schedule() {
                         {d.short}
                       </div>
                       <div
-                        className={`text-sm font-semibold ${
-                          d.count === 0 ? "text-muted-foreground" : "text-foreground"
+                        className={`text-xs font-semibold ${
+                          d.label === "—" ? "text-muted-foreground" : "text-foreground"
                         }`}
+                        data-testid={`summary-${d.idx}`}
                       >
-                        {d.count}
+                        {d.label}
                       </div>
                     </div>
                   ))}
                 </div>
                 <p className="text-[11px] text-muted-foreground text-center mt-2">
-                  Franjas activas por día
+                  Horas por día
                 </p>
               </Card>
 
-              {/* Scope selector */}
-              <Card className="p-4 space-y-3">
-                <h3 className="text-sm font-semibold">Aplicar a</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {SCOPES.map((s) => (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => applyPreset(s.value)}
-                      data-testid={`scope-${s.value}`}
-                      className={`text-xs py-2 rounded-md border hover-elevate active-elevate-2 ${
-                        activeScope === s.value
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card"
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="pt-1">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Días seleccionados
-                  </p>
-                  <div className="grid grid-cols-7 gap-1">
-                    {DAYS.map((d) => {
-                      const sel = selectedDays.includes(d.idx);
-                      return (
+              {/* One card per group */}
+              {groups.map((g, gIdx) => {
+                const override = scopeOverrides[g.id] ?? null;
+                const activeScope: Scope = override ?? derivedScopeFor(g.days);
+                return (
+                  <Card
+                    key={g.id}
+                    className="p-4 space-y-3"
+                    data-testid={`group-${g.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm font-semibold">
+                          Horario {gIdx + 1}
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          {g.days.length === 0
+                            ? "Sin días asignados"
+                            : g.ranges.length === 0
+                              ? `Sin franjas · ${groupDayLabel(g, override)}`
+                              : `${g.ranges.length} franja${g.ranges.length > 1 ? "s" : ""} · ${totalHours(g.ranges)} · ${groupDayLabel(g, override)}`}
+                        </p>
+                      </div>
+                      {groups.length > 1 && (
                         <button
-                          key={d.idx}
                           type="button"
-                          onClick={() => toggleDay(d.idx)}
-                          data-testid={`day-${d.idx}`}
+                          onClick={() => removeGroup(g.id)}
+                          className="text-muted-foreground hover-elevate p-2 rounded shrink-0"
+                          aria-label="Eliminar horario"
+                          data-testid={`button-remove-group-${g.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Scope presets */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {SCOPES.map((s) => (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => applyPresetToGroup(g.id, s.value)}
+                          data-testid={`scope-${g.id}-${s.value}`}
                           className={`text-xs py-2 rounded-md border hover-elevate active-elevate-2 ${
-                            sel
+                            activeScope === s.value
                               ? "bg-primary text-primary-foreground border-primary"
                               : "bg-card"
                           }`}
                         >
-                          {d.short}
+                          {s.label}
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </Card>
+                      ))}
+                    </div>
 
-              {/* Single franjas editor — applies to the selected days */}
-              <Card className="p-4 space-y-3" data-testid="ranges-card">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-sm font-semibold">Franjas horarias</h3>
-                    <p className="text-[11px] text-muted-foreground">
-                      {activeDays.length === 0
-                        ? "Selecciona al menos un día"
-                        : ranges.length === 0
-                          ? "Sin franjas — los días seleccionados quedarán cerrados"
-                          : `${ranges.length} franja${ranges.length > 1 ? "s" : ""} · ${totalHours(ranges)} · se aplica a ${activeDayLabel}`}
-                    </p>
-                  </div>
-                  {ranges.length > 0 && activeDays.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={clearRanges}
-                      className="text-[11px] px-2 py-1 rounded border hover-elevate text-destructive shrink-0"
-                      data-testid="button-clear-ranges"
-                    >
-                      Quitar todas
-                    </button>
-                  )}
-                </div>
-
-                {activeDays.length > 0 && ranges.length > 0 && (
-                  <div className="space-y-2">
-                    {ranges.map((r, i) => {
-                      const err = errors[`${i}`];
-                      return (
-                        <div key={i} className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Select
-                              value={r.from}
-                              onValueChange={(v) => setRangeField(i, "from", v)}
-                            >
-                              <SelectTrigger
-                                className="flex-1 h-9"
-                                data-testid={`from-${i}`}
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-64">
-                                {FROM_OPTIONS.map((t) => (
-                                  <SelectItem key={t} value={t}>
-                                    {t}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <span className="text-muted-foreground text-sm">a</span>
-                            <Select
-                              value={r.to}
-                              onValueChange={(v) => setRangeField(i, "to", v)}
-                            >
-                              <SelectTrigger
-                                className="flex-1 h-9"
-                                data-testid={`to-${i}`}
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-64">
-                                {TO_OPTIONS.map((t) => (
-                                  <SelectItem key={t} value={t}>
-                                    {t}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                    {/* Day chips */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Días seleccionados
+                      </p>
+                      <div className="grid grid-cols-7 gap-1">
+                        {DAYS.map((d) => {
+                          const sel = g.days.includes(d.idx);
+                          const inOther =
+                            !sel &&
+                            groups.some(
+                              (other) =>
+                                other.id !== g.id && other.days.includes(d.idx),
+                            );
+                          return (
                             <button
+                              key={d.idx}
                               type="button"
-                              onClick={() => removeRange(i)}
-                              className="text-muted-foreground hover-elevate p-2 rounded"
-                              aria-label="Quitar franja"
-                              data-testid={`remove-${i}`}
+                              onClick={() => toggleDayInGroup(g.id, d.idx)}
+                              data-testid={`day-${g.id}-${d.idx}`}
+                              title={inOther ? "Asignado a otro horario" : undefined}
+                              className={`text-xs py-2 rounded-md border hover-elevate active-elevate-2 ${
+                                sel
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : inOther
+                                    ? "bg-muted text-muted-foreground"
+                                    : "bg-card"
+                              }`}
                             >
-                              <X className="h-4 w-4" />
+                              {d.short}
                             </button>
-                          </div>
-                          {err && (
-                            <p className="text-[11px] text-destructive pl-1">{err}</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                {activeDays.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={addRange}
-                    className="w-full text-xs py-2 rounded-md border border-dashed hover-elevate flex items-center justify-center gap-1.5 text-muted-foreground"
-                    data-testid="add-range"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Agregar franja
-                  </button>
-                )}
-              </Card>
+                    {/* Ranges */}
+                    {g.days.length > 0 && g.ranges.length > 0 && (
+                      <div className="space-y-2 pt-1">
+                        {g.ranges.map((r, i) => {
+                          const err = errors[`${g.id}|${i}`];
+                          return (
+                            <div key={i} className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Select
+                                  value={r.from}
+                                  onValueChange={(v) =>
+                                    setRangeField(g.id, i, "from", v)
+                                  }
+                                >
+                                  <SelectTrigger
+                                    className="flex-1 h-9"
+                                    data-testid={`from-${g.id}-${i}`}
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-64">
+                                    {FROM_OPTIONS.map((t) => (
+                                      <SelectItem key={t} value={t}>
+                                        {t}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <span className="text-muted-foreground text-sm">
+                                  a
+                                </span>
+                                <Select
+                                  value={r.to}
+                                  onValueChange={(v) =>
+                                    setRangeField(g.id, i, "to", v)
+                                  }
+                                >
+                                  <SelectTrigger
+                                    className="flex-1 h-9"
+                                    data-testid={`to-${g.id}-${i}`}
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-64">
+                                    {TO_OPTIONS.map((t) => (
+                                      <SelectItem key={t} value={t}>
+                                        {t}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <button
+                                  type="button"
+                                  onClick={() => removeRangeFromGroup(g.id, i)}
+                                  className="text-muted-foreground hover-elevate p-2 rounded"
+                                  aria-label="Quitar franja"
+                                  data-testid={`remove-${g.id}-${i}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                              {err && (
+                                <p className="text-[11px] text-destructive pl-1">
+                                  {err}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {g.days.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => addRangeToGroup(g.id)}
+                        className="w-full text-xs py-2 rounded-md border border-dashed hover-elevate flex items-center justify-center gap-1.5 text-muted-foreground"
+                        data-testid={`add-range-${g.id}`}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Agregar franja
+                      </button>
+                    )}
+                  </Card>
+                );
+              })}
+
+              {/* Add another group */}
+              <button
+                type="button"
+                onClick={addGroup}
+                className="w-full text-sm py-3 rounded-md border border-dashed hover-elevate flex items-center justify-center gap-1.5 text-muted-foreground"
+                data-testid="button-add-group"
+              >
+                <Plus className="h-4 w-4" />
+                Agregar otro horario
+              </button>
             </TabsContent>
 
             {/* ---------------- DÍAS NO LABORABLES ---------------- */}
