@@ -430,8 +430,14 @@ export const CompleteCompanyBookingResponse = zod.object({
 })
 
 
+export const getCompanyAvailabilityResponseSlotsItemWeekdayMin = 0;
+export const getCompanyAvailabilityResponseSlotsItemWeekdayMax = 6;
+
+
+
 export const GetCompanyAvailabilityResponse = zod.object({
   "slots": zod.array(zod.object({
+  "weekday": zod.number().min(getCompanyAvailabilityResponseSlotsItemWeekdayMin).max(getCompanyAvailabilityResponseSlotsItemWeekdayMax).describe('0=Sunday, 6=Saturday'),
   "time": zod.string(),
   "enabled": zod.boolean()
 })),
@@ -439,16 +445,28 @@ export const GetCompanyAvailabilityResponse = zod.object({
 })
 
 
+export const updateCompanyAvailabilityBodySlotsItemWeekdayMin = 0;
+export const updateCompanyAvailabilityBodySlotsItemWeekdayMax = 6;
+
+
+
 export const UpdateCompanyAvailabilityBody = zod.object({
   "slots": zod.array(zod.object({
+  "weekday": zod.number().min(updateCompanyAvailabilityBodySlotsItemWeekdayMin).max(updateCompanyAvailabilityBodySlotsItemWeekdayMax).describe('0=Sunday, 6=Saturday'),
   "time": zod.string(),
   "enabled": zod.boolean()
 })).optional(),
   "blockedDates": zod.array(zod.string()).optional()
 })
 
+export const updateCompanyAvailabilityResponseSlotsItemWeekdayMin = 0;
+export const updateCompanyAvailabilityResponseSlotsItemWeekdayMax = 6;
+
+
+
 export const UpdateCompanyAvailabilityResponse = zod.object({
   "slots": zod.array(zod.object({
+  "weekday": zod.number().min(updateCompanyAvailabilityResponseSlotsItemWeekdayMin).max(updateCompanyAvailabilityResponseSlotsItemWeekdayMax).describe('0=Sunday, 6=Saturday'),
   "time": zod.string(),
   "enabled": zod.boolean()
 })),

@@ -124,10 +124,11 @@ export const companySlotsTable = pgTable(
     companyId: text("company_id")
       .notNull()
       .references(() => companiesTable.id, { onDelete: "cascade" }),
+    weekday: integer("weekday").notNull(), // 0=Sunday ... 6=Saturday
     time: text("time").notNull(), // HH:MM
     enabled: boolean("enabled").notNull().default(true),
   },
-  (t) => [primaryKey({ columns: [t.companyId, t.time] })],
+  (t) => [primaryKey({ columns: [t.companyId, t.weekday, t.time] })],
 );
 
 export const companyBlockedDatesTable = pgTable(

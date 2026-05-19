@@ -179,15 +179,31 @@ async function main() {
     packages.map((p) => ({ companyId: company.id, packageId: p.id, active: true })),
   );
 
-  // Slots 08:00 - 17:30 every 30 min
-  const slots: { companyId: string; time: string; enabled: boolean }[] = [];
-  for (let h = 8; h < 18; h++) {
-    for (const m of [0, 30]) {
-      slots.push({
-        companyId: company.id,
-        time: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
-        enabled: true,
-      });
+  // Slots per weekday: Mon-Fri 08:00-17:30, Sat 09:00-14:30, Sunday closed
+  const slots: {
+    companyId: string;
+    weekday: number;
+    time: string;
+    enabled: boolean;
+  }[] = [];
+  const ranges: Record<number, { from: number; to: number } | null> = {
+    0: null, // Sunday closed
+    1: { from: 8, to: 18 },
+    2: { from: 8, to: 18 },
+    3: { from: 8, to: 18 },
+    4: { from: 8, to: 18 },
+    5: { from: 8, to: 18 },
+    6: { from: 9, to: 15 },
+  };
+  for (let wd = 0; wd < 7; wd++) {
+    const r = ranges[wd];
+    for (let h = 8; h < 18; h++) {
+      for (const m of [0, 30]) {
+        const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+        const hMin = h * 60 + m;
+        const enabled = r ? hMin >= r.from * 60 && hMin < r.to * 60 : false;
+        slots.push({ companyId: company.id, weekday: wd, time, enabled });
+      }
     }
   }
   await db.insert(companySlotsTable).values(slots);

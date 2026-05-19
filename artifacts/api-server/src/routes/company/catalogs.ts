@@ -20,23 +20,27 @@ import { requireCompany } from "../../lib/auth";
 
 const router: IRouter = Router();
 
-router.get("/company/availability", requireCompany(), async (req, res): Promise<void> => {
-  const companyId = req.user!.companyId!;
+async function loadAvailability(companyId: string) {
   const [slots, blocked] = await Promise.all([
     db
-      .select({ time: companySlotsTable.time, enabled: companySlotsTable.enabled })
+      .select({
+        weekday: companySlotsTable.weekday,
+        time: companySlotsTable.time,
+        enabled: companySlotsTable.enabled,
+      })
       .from(companySlotsTable)
       .where(eq(companySlotsTable.companyId, companyId))
-      .orderBy(companySlotsTable.time),
+      .orderBy(companySlotsTable.weekday, companySlotsTable.time),
     db
       .select({ date: companyBlockedDatesTable.date })
       .from(companyBlockedDatesTable)
       .where(eq(companyBlockedDatesTable.companyId, companyId)),
   ]);
-  res.json({
-    slots,
-    blockedDates: blocked.map((b) => b.date).sort(),
-  });
+  return { slots, blockedDates: blocked.map((b) => b.date).sort() };
+}
+
+router.get("/company/availability", requireCompany(), async (req, res): Promise<void> => {
+  res.json(await loadAvailability(req.user!.companyId!));
 });
 
 router.put("/company/availability", requireCompany(), async (req, res): Promise<void> => {
@@ -48,14 +52,19 @@ router.put("/company/availability", requireCompany(), async (req, res): Promise<
   const companyId = req.user!.companyId!;
   if (parsed.data.slots) {
     await db.delete(companySlotsTable).where(eq(companySlotsTable.companyId, companyId));
-    if (parsed.data.slots.length > 0) {
-      await db.insert(companySlotsTable).values(
-        parsed.data.slots.map((s) => ({
-          companyId,
-          time: s.time,
-          enabled: s.enabled,
-        })),
-      );
+    // Dedupe by (weekday, time) keeping the last value
+    const dedup = new Map<string, { weekday: number; time: string; enabled: boolean }>();
+    for (const s of parsed.data.slots) {
+      if (s.weekday < 0 || s.weekday > 6) continue;
+      dedup.set(`${s.weekday}|${s.time}`, {
+        weekday: s.weekday,
+        time: s.time,
+        enabled: s.enabled,
+      });
+    }
+    const values = [...dedup.values()].map((s) => ({ companyId, ...s }));
+    if (values.length > 0) {
+      await db.insert(companySlotsTable).values(values);
     }
   }
   if (parsed.data.blockedDates) {
@@ -69,18 +78,7 @@ router.put("/company/availability", requireCompany(), async (req, res): Promise<
         .values(uniq.map((d) => ({ companyId, date: d })));
     }
   }
-  const [slots, blocked] = await Promise.all([
-    db
-      .select({ time: companySlotsTable.time, enabled: companySlotsTable.enabled })
-      .from(companySlotsTable)
-      .where(eq(companySlotsTable.companyId, companyId))
-      .orderBy(companySlotsTable.time),
-    db
-      .select({ date: companyBlockedDatesTable.date })
-      .from(companyBlockedDatesTable)
-      .where(eq(companyBlockedDatesTable.companyId, companyId)),
-  ]);
-  res.json({ slots, blockedDates: blocked.map((b) => b.date).sort() });
+  res.json(await loadAvailability(companyId));
 });
 
 // ---- Packages ----

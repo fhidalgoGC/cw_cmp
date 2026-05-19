@@ -581,8 +581,9 @@ components:
 
     CompanySlot:
       type: object
-      required: [time, enabled]
+      required: [weekday, time, enabled]
       properties:
+        weekday: { type: integer, minimum: 0, maximum: 6, description: "0=Sunday, 6=Saturday" }
         time: { type: string }
         enabled: { type: boolean }
 

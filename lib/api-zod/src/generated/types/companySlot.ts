@@ -7,6 +7,12 @@
  */
 
 export interface CompanySlot {
+  /**
+     * 0=Sunday, 6=Saturday
+     * @minimum 0
+     * @maximum 6
+     */
+  weekday: number;
   time: string;
   enabled: boolean;
 }
