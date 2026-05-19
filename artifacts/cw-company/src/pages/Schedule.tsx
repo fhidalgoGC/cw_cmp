@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Clock, CalendarOff, X, Plus, Copy } from "lucide-react";
+import { Clock, CalendarOff, X, Plus } from "lucide-react";
 import { formatDateLong } from "@/lib/format";
 import { toast } from "sonner";
 import { es } from "date-fns/locale";
@@ -164,6 +164,21 @@ export default function Schedule() {
     setAllTimes(times);
     setBlocked(((data as any).blockedDates ?? []) as string[]);
     setDirty(false);
+
+    // Seed the working ranges from the first active day using the fresh map
+    // (cannot rely on `slots` state — it's still the previous render's value).
+    const seedDay =
+      scope === "custom"
+        ? customDays[0] ?? null
+        : SCOPES.find((s) => s.value === scope)!.days[0] ?? null;
+    if (seedDay == null) {
+      setRanges([]);
+    } else {
+      const enabled = times.filter((t) => map.get(`${seedDay}|${t}`));
+      setRanges(slotsToRanges(enabled));
+    }
+    setErrors({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const activeDays = useMemo(() => {
@@ -177,47 +192,70 @@ export default function Schedule() {
     );
   }
 
-  function dayRanges(wd: number): Range[] {
+  // ---- Single working list of ranges that applies to the active days ----
+  const [ranges, setRanges] = useState<Range[]>([]);
+
+  // When the scope (or custom-days picker) changes, reload the working list
+  // from the first active day in the *current* edit state so the user sees
+  // what those days currently hold. Initial load is seeded in the data
+  // hydration effect above.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!data) return;
+    if (activeDays.length === 0) {
+      setRanges([]);
+      setErrors({});
+      return;
+    }
+    const wd = activeDays[0];
     const enabled: string[] = [];
     for (const t of allTimes) if (slots.get(`${wd}|${t}`)) enabled.push(t);
-    return slotsToRanges(enabled);
-  }
+    setRanges(slotsToRanges(enabled));
+    setErrors({});
+  }, [scope, customDays]);
 
-  function writeDayRanges(wd: number, ranges: Range[]) {
-    const enabledSet = new Set(rangesToSlotTimes(ranges));
-    // Ensure all 30-min ticks in the ranges exist in allTimes
+  function applyRangesToActiveDays(nextRanges: Range[]) {
+    const enabledSet = new Set(rangesToSlotTimes(nextRanges));
     const newTimes = new Set(allTimes);
     for (const t of enabledSet) newTimes.add(t);
     const nextAllTimes = [...newTimes].sort();
     setAllTimes(nextAllTimes);
     setSlots((prev) => {
       const m = new Map(prev);
-      // Clear this weekday for all known times
-      for (const t of nextAllTimes) m.set(`${wd}|${t}`, false);
-      for (const t of enabledSet) m.set(`${wd}|${t}`, true);
-      // Make sure every (wd', t) entry exists for new times so save sends them
+      // Ensure every (wd, t) entry exists for newly introduced times
       for (let w = 0; w < 7; w++) {
         for (const t of nextAllTimes) {
           const k = `${w}|${t}`;
           if (!m.has(k)) m.set(k, false);
         }
       }
+      // Overwrite each active day with the new ranges
+      for (const wd of activeDays) {
+        for (const t of nextAllTimes) m.set(`${wd}|${t}`, enabledSet.has(t));
+      }
       return m;
     });
     setDirty(true);
-    setErrors((prev) => {
-      const out = { ...prev };
-      for (const k of Object.keys(out)) if (k.startsWith(`${wd}|`)) delete out[k];
-      ranges.forEach((r, i) => {
-        const err = validateRange(r, ranges.filter((_, j) => j !== i));
-        if (err) out[`${wd}|${i}`] = err;
+    setErrors(() => {
+      const out: Record<string, string> = {};
+      nextRanges.forEach((r, i) => {
+        const err = validateRange(
+          r,
+          nextRanges.filter((_, j) => j !== i),
+        );
+        if (err) out[`${i}`] = err;
       });
       return out;
     });
   }
 
-  function addRange(wd: number) {
-    const curr = [...dayRanges(wd)].sort((a, b) => timeToMin(a.from) - timeToMin(b.from));
+  function setRangesAndApply(nextRanges: Range[]) {
+    setRanges(nextRanges);
+    applyRangesToActiveDays(nextRanges);
+  }
+
+  function addRange() {
+    const curr = [...ranges].sort((a, b) => timeToMin(a.from) - timeToMin(b.from));
     let candidate: Range | null = null;
     let cursor = 480; // 08:00
     for (const r of curr) {
@@ -249,41 +287,21 @@ export default function Schedule() {
       toast.error("No hay espacio para otra franja");
       return;
     }
-    writeDayRanges(wd, [...curr, candidate]);
+    setRangesAndApply([...ranges, candidate]);
   }
 
-  function removeRange(wd: number, idx: number) {
-    writeDayRanges(wd, dayRanges(wd).filter((_, i) => i !== idx));
+  function removeRange(idx: number) {
+    setRangesAndApply(ranges.filter((_, i) => i !== idx));
   }
 
-  function setRangeField(wd: number, idx: number, field: "from" | "to", value: string) {
-    writeDayRanges(
-      wd,
-      dayRanges(wd).map((r, i) => (i === idx ? { ...r, [field]: value } : r)),
+  function setRangeField(idx: number, field: "from" | "to", value: string) {
+    setRangesAndApply(
+      ranges.map((r, i) => (i === idx ? { ...r, [field]: value } : r)),
     );
   }
 
-  function copyDayToAll(srcWd: number) {
-    const src = dayRanges(srcWd);
-    const enabledSet = new Set(rangesToSlotTimes(src));
-    const newTimes = new Set(allTimes);
-    for (const t of enabledSet) newTimes.add(t);
-    const nextAllTimes = [...newTimes].sort();
-    setAllTimes(nextAllTimes);
-    setSlots(() => {
-      const m = new Map<string, boolean>();
-      for (let w = 0; w < 7; w++) {
-        for (const t of nextAllTimes) m.set(`${w}|${t}`, enabledSet.has(t));
-      }
-      return m;
-    });
-    setErrors({});
-    setDirty(true);
-    toast.success("Horario aplicado a todos los días");
-  }
-
-  function clearDay(wd: number) {
-    writeDayRanges(wd, []);
+  function clearRanges() {
+    setRangesAndApply([]);
   }
 
   function onCalendarSelect(dates: Date[] | undefined) {
@@ -323,6 +341,18 @@ export default function Schedule() {
   );
 
   const blockedDates = useMemo(() => blocked.map(isoToDate), [blocked]);
+
+  const activeDayLabel = useMemo(() => {
+    if (scope !== "custom") {
+      return SCOPES.find((s) => s.value === scope)!.label.toLowerCase();
+    }
+    if (activeDays.length === 0) return "—";
+    if (activeDays.length === 7) return "todos los días";
+    return [...activeDays]
+      .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
+      .map((d) => DAYS[d].long.slice(0, 3).toLowerCase())
+      .join(", ");
+  }, [scope, activeDays]);
 
   return (
     <AppShell>
@@ -436,132 +466,106 @@ export default function Schedule() {
                 )}
               </Card>
 
-              {/* Per-day range editors */}
-              {activeDays.length === 0 ? (
-                <Card className="p-4">
-                  <p className="text-xs text-destructive text-center">
-                    Selecciona al menos un día
-                  </p>
-                </Card>
-              ) : (
-                [...activeDays]
-                  .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
-                  .map((wd) => {
-                    const day = DAYS[wd];
-                    const ranges = dayRanges(wd);
-                    return (
-                      <Card key={wd} className="p-4 space-y-3" data-testid={`day-card-${wd}`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="text-sm font-semibold">{day.long}</h3>
-                            <p className="text-[11px] text-muted-foreground">
-                              {ranges.length === 0
-                                ? "Cerrado"
-                                : `${ranges.length} franja${ranges.length > 1 ? "s" : ""} · ${totalHours(ranges)}`}
-                            </p>
-                          </div>
-                          <div className="flex gap-1 flex-wrap justify-end">
-                            {ranges.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => copyDayToAll(wd)}
-                                className="text-[11px] px-2 py-1 rounded border hover-elevate flex items-center gap-1"
-                                data-testid={`button-copy-all-${wd}`}
+              {/* Single franjas editor — applies to the selected days */}
+              <Card className="p-4 space-y-3" data-testid="ranges-card">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-semibold">Franjas horarias</h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      {activeDays.length === 0
+                        ? "Selecciona al menos un día"
+                        : ranges.length === 0
+                          ? "Sin franjas — los días seleccionados quedarán cerrados"
+                          : `${ranges.length} franja${ranges.length > 1 ? "s" : ""} · ${totalHours(ranges)} · se aplica a ${activeDayLabel}`}
+                    </p>
+                  </div>
+                  {ranges.length > 0 && activeDays.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearRanges}
+                      className="text-[11px] px-2 py-1 rounded border hover-elevate text-destructive shrink-0"
+                      data-testid="button-clear-ranges"
+                    >
+                      Quitar todas
+                    </button>
+                  )}
+                </div>
+
+                {activeDays.length > 0 && ranges.length > 0 && (
+                  <div className="space-y-2">
+                    {ranges.map((r, i) => {
+                      const err = errors[`${i}`];
+                      return (
+                        <div key={i} className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={r.from}
+                              onValueChange={(v) => setRangeField(i, "from", v)}
+                            >
+                              <SelectTrigger
+                                className="flex-1 h-9"
+                                data-testid={`from-${i}`}
                               >
-                                <Copy className="h-3 w-3" />
-                                Aplicar a todos
-                              </button>
-                            )}
-                            {ranges.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => clearDay(wd)}
-                                className="text-[11px] px-2 py-1 rounded border hover-elevate text-destructive"
-                                data-testid={`button-clear-day-${wd}`}
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-64">
+                                {FROM_OPTIONS.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {t}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <span className="text-muted-foreground text-sm">a</span>
+                            <Select
+                              value={r.to}
+                              onValueChange={(v) => setRangeField(i, "to", v)}
+                            >
+                              <SelectTrigger
+                                className="flex-1 h-9"
+                                data-testid={`to-${i}`}
                               >
-                                Cerrar
-                              </button>
-                            )}
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-64">
+                                {TO_OPTIONS.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {t}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <button
+                              type="button"
+                              onClick={() => removeRange(i)}
+                              className="text-muted-foreground hover-elevate p-2 rounded"
+                              aria-label="Quitar franja"
+                              data-testid={`remove-${i}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
                           </div>
+                          {err && (
+                            <p className="text-[11px] text-destructive pl-1">{err}</p>
+                          )}
                         </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-                        {ranges.length === 0 ? null : (
-                          <div className="space-y-2">
-                            {ranges.map((r, i) => {
-                              const errKey = `${wd}|${i}`;
-                              const err = errors[errKey];
-                              return (
-                                <div key={i} className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <Select
-                                      value={r.from}
-                                      onValueChange={(v) => setRangeField(wd, i, "from", v)}
-                                    >
-                                      <SelectTrigger
-                                        className="flex-1 h-9"
-                                        data-testid={`from-${wd}-${i}`}
-                                      >
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent className="max-h-64">
-                                        {FROM_OPTIONS.map((t) => (
-                                          <SelectItem key={t} value={t}>
-                                            {t}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <span className="text-muted-foreground text-sm">a</span>
-                                    <Select
-                                      value={r.to}
-                                      onValueChange={(v) => setRangeField(wd, i, "to", v)}
-                                    >
-                                      <SelectTrigger
-                                        className="flex-1 h-9"
-                                        data-testid={`to-${wd}-${i}`}
-                                      >
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent className="max-h-64">
-                                        {TO_OPTIONS.map((t) => (
-                                          <SelectItem key={t} value={t}>
-                                            {t}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeRange(wd, i)}
-                                      className="text-muted-foreground hover-elevate p-2 rounded"
-                                      aria-label="Quitar franja"
-                                      data-testid={`remove-${wd}-${i}`}
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                  {err && (
-                                    <p className="text-[11px] text-destructive pl-1">{err}</p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => addRange(wd)}
-                          className="w-full text-xs py-2 rounded-md border border-dashed hover-elevate flex items-center justify-center gap-1.5 text-muted-foreground"
-                          data-testid={`add-range-${wd}`}
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          Agregar franja
-                        </button>
-                      </Card>
-                    );
-                  })
-              )}
+                {activeDays.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={addRange}
+                    className="w-full text-xs py-2 rounded-md border border-dashed hover-elevate flex items-center justify-center gap-1.5 text-muted-foreground"
+                    data-testid="add-range"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Agregar franja
+                  </button>
+                )}
+              </Card>
             </TabsContent>
 
             {/* ---------------- DÍAS NO LABORABLES ---------------- */}
