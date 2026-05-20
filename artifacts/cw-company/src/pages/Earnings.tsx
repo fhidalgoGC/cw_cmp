@@ -12,6 +12,7 @@ import { formatCurrency, formatDateShort, todayIso, addDaysIso } from "@/lib/for
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid } from "recharts";
 
 const RANGES = [
+  { value: 1, label: "Hoy" },
   { value: 7, label: "7 días" },
   { value: 14, label: "14 días" },
   { value: 30, label: "30 días" },
