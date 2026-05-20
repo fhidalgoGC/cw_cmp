@@ -522,6 +522,18 @@ components:
           type: string
           enum: [pending_acceptance, accepted_by_company, rejected_by_company]
         comments: { type: ["string", "null"] }
+        review:
+          oneOf:
+            - $ref: "#/components/schemas/BookingReview"
+            - type: "null"
+        createdAt: { type: string }
+
+    BookingReview:
+      type: object
+      required: [rating, createdAt]
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: ["string", "null"] }
         createdAt: { type: string }
 
     Pagination:

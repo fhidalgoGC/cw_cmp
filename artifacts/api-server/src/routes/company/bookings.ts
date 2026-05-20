@@ -8,6 +8,7 @@ import {
   washTypesTable,
   addOnsTable,
   billingsTable,
+  bookingReviewsTable,
 } from "@workspace/db";
 import { RejectCompanyBookingBody } from "@workspace/api-zod";
 import { requireCompany, todayLocalIso } from "../../lib/auth";
@@ -23,7 +24,7 @@ async function serializeBookings(rows: BookingRow[]) {
   const sizeIds = [...new Set(rows.map((b) => b.vehicleSizeId))];
   const washIds = [...new Set(rows.map((b) => b.washTypeId))];
 
-  const [sizes, washes, links] = await Promise.all([
+  const [sizes, washes, links, reviews] = await Promise.all([
     db
       .select({ id: vehicleSizesTable.id, slug: vehicleSizesTable.slug, name: vehicleSizesTable.name })
       .from(vehicleSizesTable)
@@ -42,7 +43,17 @@ async function serializeBookings(rows: BookingRow[]) {
       .from(bookingAddOnsTable)
       .innerJoin(addOnsTable, eq(bookingAddOnsTable.addOnId, addOnsTable.id))
       .where(inArray(bookingAddOnsTable.bookingId, ids)),
+    db
+      .select({
+        bookingId: bookingReviewsTable.bookingId,
+        rating: bookingReviewsTable.rating,
+        comment: bookingReviewsTable.comment,
+        createdAt: bookingReviewsTable.createdAt,
+      })
+      .from(bookingReviewsTable)
+      .where(inArray(bookingReviewsTable.bookingId, ids)),
   ]);
+  const reviewByBooking = new Map(reviews.map((r) => [r.bookingId, r]));
 
   const sizeMap = new Map(sizes.map((s) => [s.id, s]));
   const washMap = new Map(washes.map((w) => [w.id, w]));
@@ -71,6 +82,15 @@ async function serializeBookings(rows: BookingRow[]) {
     status: b.status,
     companyStatus: b.companyStatus,
     comments: b.comments,
+    review: (() => {
+      const r = reviewByBooking.get(b.id);
+      if (!r) return null;
+      return {
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt.toISOString(),
+      };
+    })(),
     createdAt: b.createdAt.toISOString(),
   }));
 }

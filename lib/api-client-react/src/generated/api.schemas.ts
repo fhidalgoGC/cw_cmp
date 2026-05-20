@@ -96,6 +96,17 @@ export const CompanyBookingCompanyStatus = {
   rejected_by_company: 'rejected_by_company',
 } as const;
 
+export interface BookingReview {
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating: number;
+  /** @nullable */
+  comment?: string | null;
+  createdAt: string;
+}
+
 export interface CompanyBooking {
   id: string;
   clientName: string;
@@ -119,6 +130,7 @@ export interface CompanyBooking {
   companyStatus: CompanyBookingCompanyStatus;
   /** @nullable */
   comments?: string | null;
+  review?: BookingReview | null;
   createdAt: string;
 }
 

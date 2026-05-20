@@ -208,3 +208,21 @@ export const billingsTable = pgTable(
   },
   (t) => [uniqueIndex("billings_booking_uniq").on(t.bookingId)],
 );
+
+export const bookingReviewsTable = pgTable(
+  "booking_reviews",
+  {
+    id: id(),
+    bookingId: text("booking_id")
+      .notNull()
+      .references(() => bookingsTable.id, { onDelete: "cascade" }),
+    companyId: text("company_id")
+      .notNull()
+      .references(() => companiesTable.id),
+    clientId: text("client_id").references(() => usersTable.id),
+    rating: integer("rating").notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("booking_reviews_booking_uniq").on(t.bookingId)],
+);

@@ -5,6 +5,7 @@
  * Car Wash - Company (Empresa) API
  * OpenAPI spec version: 0.1.0
  */
+import type { BookingReview } from './bookingReview';
 import type { BookingStatus } from './bookingStatus';
 import type { CatalogRef } from './catalogRef';
 import type { CompanyBookingCompanyStatus } from './companyBookingCompanyStatus';
@@ -32,5 +33,6 @@ export interface CompanyBooking {
   companyStatus: CompanyBookingCompanyStatus;
   /** @nullable */
   comments?: string | null;
+  review?: BookingReview | null;
   createdAt: string;
 }

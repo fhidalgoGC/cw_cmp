@@ -104,6 +104,12 @@ export const GetCompanyDashboardQueryParams = zod.object({
   "date": zod.coerce.string().optional().describe('YYYY-MM-DD (default today)')
 })
 
+export const getCompanyDashboardResponseNextBookingOneReviewOneRatingMax = 5;
+
+export const getCompanyDashboardResponseUpcomingItemReviewOneRatingMax = 5;
+
+
+
 export const GetCompanyDashboardResponse = zod.object({
   "date": zod.string(),
   "summary": zod.object({
@@ -145,6 +151,11 @@ export const GetCompanyDashboardResponse = zod.object({
   "status": zod.enum(['pending', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "companyStatus": zod.enum(['pending_acceptance', 'accepted_by_company', 'rejected_by_company']),
   "comments": zod.string().nullish(),
+  "review": zod.union([zod.object({
+  "rating": zod.number().min(1).max(getCompanyDashboardResponseNextBookingOneReviewOneRatingMax),
+  "comment": zod.string().nullish(),
+  "createdAt": zod.string()
+}),zod.null()]).optional(),
   "createdAt": zod.string()
 }),zod.null()]),
   "upcoming": zod.array(zod.object({
@@ -177,6 +188,11 @@ export const GetCompanyDashboardResponse = zod.object({
   "status": zod.enum(['pending', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "companyStatus": zod.enum(['pending_acceptance', 'accepted_by_company', 'rejected_by_company']),
   "comments": zod.string().nullish(),
+  "review": zod.union([zod.object({
+  "rating": zod.number().min(1).max(getCompanyDashboardResponseUpcomingItemReviewOneRatingMax),
+  "comment": zod.string().nullish(),
+  "createdAt": zod.string()
+}),zod.null()]).optional(),
   "createdAt": zod.string()
 }))
 })
@@ -195,6 +211,10 @@ export const ListCompanyBookingsQueryParams = zod.object({
   "page": zod.coerce.number().optional(),
   "limit": zod.coerce.number().optional()
 })
+
+export const listCompanyBookingsResponseDataItemReviewOneRatingMax = 5;
+
+
 
 export const ListCompanyBookingsResponse = zod.object({
   "data": zod.array(zod.object({
@@ -227,6 +247,11 @@ export const ListCompanyBookingsResponse = zod.object({
   "status": zod.enum(['pending', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "companyStatus": zod.enum(['pending_acceptance', 'accepted_by_company', 'rejected_by_company']),
   "comments": zod.string().nullish(),
+  "review": zod.union([zod.object({
+  "rating": zod.number().min(1).max(listCompanyBookingsResponseDataItemReviewOneRatingMax),
+  "comment": zod.string().nullish(),
+  "createdAt": zod.string()
+}),zod.null()]).optional(),
   "createdAt": zod.string()
 })),
   "pagination": zod.object({
@@ -241,6 +266,10 @@ export const ListCompanyBookingsResponse = zod.object({
 export const GetCompanyBookingParams = zod.object({
   "bookingId": zod.coerce.string()
 })
+
+export const getCompanyBookingResponseReviewOneRatingMax = 5;
+
+
 
 export const GetCompanyBookingResponse = zod.object({
   "id": zod.string(),
@@ -272,6 +301,11 @@ export const GetCompanyBookingResponse = zod.object({
   "status": zod.enum(['pending', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "companyStatus": zod.enum(['pending_acceptance', 'accepted_by_company', 'rejected_by_company']),
   "comments": zod.string().nullish(),
+  "review": zod.union([zod.object({
+  "rating": zod.number().min(1).max(getCompanyBookingResponseReviewOneRatingMax),
+  "comment": zod.string().nullish(),
+  "createdAt": zod.string()
+}),zod.null()]).optional(),
   "createdAt": zod.string()
 })
 
@@ -279,6 +313,10 @@ export const GetCompanyBookingResponse = zod.object({
 export const AcceptCompanyBookingParams = zod.object({
   "bookingId": zod.coerce.string()
 })
+
+export const acceptCompanyBookingResponseReviewOneRatingMax = 5;
+
+
 
 export const AcceptCompanyBookingResponse = zod.object({
   "id": zod.string(),
@@ -310,6 +348,11 @@ export const AcceptCompanyBookingResponse = zod.object({
   "status": zod.enum(['pending', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "companyStatus": zod.enum(['pending_acceptance', 'accepted_by_company', 'rejected_by_company']),
   "comments": zod.string().nullish(),
+  "review": zod.union([zod.object({
+  "rating": zod.number().min(1).max(acceptCompanyBookingResponseReviewOneRatingMax),
+  "comment": zod.string().nullish(),
+  "createdAt": zod.string()
+}),zod.null()]).optional(),
   "createdAt": zod.string()
 })
 
@@ -321,6 +364,10 @@ export const RejectCompanyBookingParams = zod.object({
 export const RejectCompanyBookingBody = zod.object({
   "reason": zod.string()
 })
+
+export const rejectCompanyBookingResponseReviewOneRatingMax = 5;
+
+
 
 export const RejectCompanyBookingResponse = zod.object({
   "id": zod.string(),
@@ -352,6 +399,11 @@ export const RejectCompanyBookingResponse = zod.object({
   "status": zod.enum(['pending', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "companyStatus": zod.enum(['pending_acceptance', 'accepted_by_company', 'rejected_by_company']),
   "comments": zod.string().nullish(),
+  "review": zod.union([zod.object({
+  "rating": zod.number().min(1).max(rejectCompanyBookingResponseReviewOneRatingMax),
+  "comment": zod.string().nullish(),
+  "createdAt": zod.string()
+}),zod.null()]).optional(),
   "createdAt": zod.string()
 })
 
@@ -359,6 +411,10 @@ export const RejectCompanyBookingResponse = zod.object({
 export const StartCompanyBookingParams = zod.object({
   "bookingId": zod.coerce.string()
 })
+
+export const startCompanyBookingResponseReviewOneRatingMax = 5;
+
+
 
 export const StartCompanyBookingResponse = zod.object({
   "id": zod.string(),
@@ -390,6 +446,11 @@ export const StartCompanyBookingResponse = zod.object({
   "status": zod.enum(['pending', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "companyStatus": zod.enum(['pending_acceptance', 'accepted_by_company', 'rejected_by_company']),
   "comments": zod.string().nullish(),
+  "review": zod.union([zod.object({
+  "rating": zod.number().min(1).max(startCompanyBookingResponseReviewOneRatingMax),
+  "comment": zod.string().nullish(),
+  "createdAt": zod.string()
+}),zod.null()]).optional(),
   "createdAt": zod.string()
 })
 
@@ -397,6 +458,10 @@ export const StartCompanyBookingResponse = zod.object({
 export const CompleteCompanyBookingParams = zod.object({
   "bookingId": zod.coerce.string()
 })
+
+export const completeCompanyBookingResponseReviewOneRatingMax = 5;
+
+
 
 export const CompleteCompanyBookingResponse = zod.object({
   "id": zod.string(),
@@ -428,6 +493,11 @@ export const CompleteCompanyBookingResponse = zod.object({
   "status": zod.enum(['pending', 'accepted', 'in_progress', 'completed', 'cancelled']),
   "companyStatus": zod.enum(['pending_acceptance', 'accepted_by_company', 'rejected_by_company']),
   "comments": zod.string().nullish(),
+  "review": zod.union([zod.object({
+  "rating": zod.number().min(1).max(completeCompanyBookingResponseReviewOneRatingMax),
+  "comment": zod.string().nullish(),
+  "createdAt": zod.string()
+}),zod.null()]).optional(),
   "createdAt": zod.string()
 })
 

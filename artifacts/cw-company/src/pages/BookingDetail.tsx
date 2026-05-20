@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, CompanyStatusBadge, PaymentBadge } from "@/components/StatusBadge";
 import { formatCurrency, formatDateLong } from "@/lib/format";
-import { ChevronLeft, Phone, MapPin, Car, Clock } from "lucide-react";
+import { ChevronLeft, Phone, MapPin, Car, Clock, Star } from "lucide-react";
 import { toast } from "sonner";
 
 export default function BookingDetail({ id }: { id: string }) {
@@ -148,6 +148,47 @@ export default function BookingDetail({ id }: { id: string }) {
                   </div>
                 )}
               </Card>
+
+              {b.status === "completed" && (
+                <Card className="p-4 space-y-2" data-testid="card-review">
+                  <h3 className="text-sm font-semibold">Reseña del cliente</h3>
+                  {b.review ? (
+                    <>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <Star
+                            key={n}
+                            className={
+                              n <= b.review.rating
+                                ? "h-5 w-5 fill-amber-400 text-amber-400"
+                                : "h-5 w-5 text-muted-foreground/30"
+                            }
+                          />
+                        ))}
+                        <span className="ml-2 text-sm font-semibold">
+                          {b.review.rating}.0
+                        </span>
+                      </div>
+                      {b.review.comment ? (
+                        <p className="text-sm text-foreground/90 italic">
+                          “{b.review.comment}”
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          El cliente no dejó comentario.
+                        </p>
+                      )}
+                      <p className="text-[11px] text-muted-foreground">
+                        {formatDateLong(b.review.createdAt.slice(0, 10))}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      El cliente aún no ha calificado este servicio.
+                    </p>
+                  )}
+                </Card>
+              )}
 
               {showReject && b.companyStatus === "pending_acceptance" && (
                 <Card className="p-4 space-y-3">

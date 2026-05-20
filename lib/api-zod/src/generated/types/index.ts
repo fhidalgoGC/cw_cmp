@@ -7,6 +7,7 @@
  */
 
 export * from './authResult';
+export * from './bookingReview';
 export * from './bookingStatus';
 export * from './catalogRef';
 export * from './companyAvailability';

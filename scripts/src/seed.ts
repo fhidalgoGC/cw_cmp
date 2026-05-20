@@ -11,6 +11,7 @@ import {
   companyPackagesTable,
   companySlotsTable,
   bookingsTable,
+  bookingReviewsTable,
   bookingAddOnsTable,
   billingsTable,
 } from "@workspace/db";
@@ -23,6 +24,7 @@ function hashPassword(password: string): string {
 }
 
 async function clear() {
+  await db.delete(bookingReviewsTable);
   await db.delete(billingsTable);
   await db.delete(bookingAddOnsTable);
   await db.delete(bookingsTable);
@@ -293,6 +295,38 @@ async function main() {
         paidAt: item.billing.paid ? new Date() : null,
       });
     }
+  }
+
+  // Reviews — most completed bookings get a customer review
+  const allBookings = await db.select().from(bookingsTable);
+  const completedBookings = allBookings.filter((b) => b.status === "completed");
+  const reviewFixtures: Array<{ rating: number; comment: string | null }> = [
+    { rating: 5, comment: "Excelente servicio, quedó como nuevo. Muy puntuales." },
+    { rating: 5, comment: "Súper recomendados, atención de primera." },
+    { rating: 4, comment: "Buen trabajo, aunque llegaron 10 min tarde." },
+    { rating: 5, comment: "Increíble detallado, vale cada peso." },
+    { rating: 4, comment: "Todo bien, repetiría." },
+    { rating: 3, comment: "Cumplieron, pero esperaba un poco más en los rines." },
+    { rating: 5, comment: null },
+    { rating: 5, comment: "Muy amables y rápidos." },
+    { rating: 4, comment: "Buena relación calidad-precio." },
+  ];
+  let ri = 0;
+  for (const cb of completedBookings) {
+    // Skip a couple to simulate pending reviews
+    if (ri % 5 === 4) {
+      ri++;
+      continue;
+    }
+    const fx = reviewFixtures[ri % reviewFixtures.length];
+    await db.insert(bookingReviewsTable).values({
+      bookingId: cb.id,
+      companyId: cb.companyId,
+      clientId: cb.clientId,
+      rating: fx.rating,
+      comment: fx.comment,
+    });
+    ri++;
   }
 
   console.log("Seed done.");
