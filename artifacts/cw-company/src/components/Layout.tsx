@@ -43,24 +43,31 @@ export function AppHeader({
   title: string;
   subtitle?: string;
   right?: ReactNode;
-  /** When provided, renders a back chevron on the left that links to this path. */
+  /** When provided, renders a back chevron. Uses browser history when available, falls back to this path. */
   back?: string;
 }) {
+  const [, navigate] = useLocation();
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+    } else if (back) {
+      navigate(back);
+    }
+  };
   return (
     <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b px-2 py-3 flex items-center justify-between gap-2">
       <div className="flex items-center gap-1 min-w-0 flex-1">
         {back && (
-          <Link href={back}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 -ml-1"
-              data-testid="button-back"
-              aria-label="Volver"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 -ml-1"
+            data-testid="button-back"
+            aria-label="Volver"
+            onClick={handleBack}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
         )}
         <div className={cn("min-w-0", !back && "pl-2")}>
           <h1
