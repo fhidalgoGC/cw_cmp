@@ -311,14 +311,9 @@ async function main() {
     { rating: 5, comment: "Muy amables y rápidos." },
     { rating: 4, comment: "Buena relación calidad-precio." },
   ];
-  let ri = 0;
-  for (const cb of completedBookings) {
-    // Skip a couple to simulate pending reviews
-    if (ri % 5 === 4) {
-      ri++;
-      continue;
-    }
-    const fx = reviewFixtures[ri % reviewFixtures.length];
+  for (let i = 0; i < completedBookings.length; i++) {
+    const cb = completedBookings[i];
+    const fx = reviewFixtures[i % reviewFixtures.length];
     await db.insert(bookingReviewsTable).values({
       bookingId: cb.id,
       companyId: cb.companyId,
@@ -326,7 +321,6 @@ async function main() {
       rating: fx.rating,
       comment: fx.comment,
     });
-    ri++;
   }
 
   console.log("Seed done.");
