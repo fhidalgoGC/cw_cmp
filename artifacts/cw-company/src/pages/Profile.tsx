@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import {
   Package,
   Wrench,
+  Wallet,
   LogOut,
   Star,
   CheckCircle2,
@@ -185,6 +186,21 @@ export default function Profile() {
                     <p className="font-medium">Servicios</p>
                     <p className="text-xs text-muted-foreground">
                       Lavados y adicionales activos
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Link>
+              <Link href="/earnings">
+                <div
+                  className="flex items-center gap-3 p-4 hover-elevate active-elevate-2 cursor-pointer"
+                  data-testid="link-earnings"
+                >
+                  <Wallet className="h-5 w-5 text-primary" />
+                  <div className="flex-1">
+                    <p className="font-medium">Ingresos</p>
+                    <p className="text-xs text-muted-foreground">
+                      Resumen de ventas y servicios cobrados
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />

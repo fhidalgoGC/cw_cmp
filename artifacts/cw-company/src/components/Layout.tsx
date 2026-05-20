@@ -5,7 +5,6 @@ import {
   CalendarClock,
   Package,
   Wrench,
-  Wallet,
   User,
   ChevronLeft,
 } from "lucide-react";
@@ -17,7 +16,6 @@ const tabs = [
   { path: "/", label: "Inicio", icon: LayoutDashboard },
   { path: "/bookings", label: "Reservas", icon: ClipboardList },
   { path: "/schedule", label: "Horarios", icon: CalendarClock },
-  { path: "/earnings", label: "Ingresos", icon: Wallet },
   { path: "/profile", label: "Perfil", icon: User },
 ];
 
@@ -86,7 +84,7 @@ function BottomNav() {
   const isActive = (p: string) => (p === "/" ? location === "/" : location.startsWith(p));
   return (
     <nav className="sticky bottom-0 z-30 bg-background border-t">
-      <ul className="grid grid-cols-5">
+      <ul className="grid grid-cols-4">
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = isActive(t.path);
