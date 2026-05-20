@@ -6,7 +6,9 @@ import {
 import { AppShell, AppHeader } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Search } from "lucide-react";
 import { PaymentBadge } from "@/components/StatusBadge";
 import { formatCurrency, formatDateShort, todayIso, addDaysIso } from "@/lib/format";
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid } from "recharts";
@@ -33,6 +35,19 @@ export default function Earnings() {
   });
   const summary = data as any;
   const serviceRows = ((services as any)?.data ?? []) as any[];
+  const [search, setSearch] = useState("");
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return serviceRows;
+    return serviceRows.filter((s) => {
+      return (
+        String(s.clientName ?? "").toLowerCase().includes(q) ||
+        String(s.washType?.name ?? "").toLowerCase().includes(q) ||
+        String(s.vehicleSize?.name ?? "").toLowerCase().includes(q) ||
+        String(s.date ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [serviceRows, search]);
 
   // Cuando el filtro es "Hoy" agrupamos por hora a partir de los servicios
   const hourlySeries = useMemo(() => {
@@ -154,35 +169,58 @@ export default function Earnings() {
             </Card>
 
             <section>
-              <h2 className="text-sm font-semibold mb-2">Servicios cobrados</h2>
-              <div className="space-y-2">
-                {serviceRows.length === 0 && (
-                  <Card className="p-4 text-center text-sm text-muted-foreground">
-                    Sin servicios en el periodo
-                  </Card>
-                )}
-                {serviceRows.map((s) => (
-                  <Card key={s.id} className="p-3" data-testid={`earning-${s.id}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-muted-foreground">
-                          {formatDateShort(s.date)} · {s.time}
-                        </p>
-                        <p className="font-medium truncate">{s.clientName}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {s.washType.name} · {s.vehicleSize.name}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-semibold">{formatCurrency(s.amount)}</p>
-                        <div className="mt-1">
-                          <PaymentBadge type={s.paymentType} status={s.paymentStatus} />
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <h2 className="text-sm font-semibold">Servicios cobrados</h2>
+                <span className="text-[11px] text-muted-foreground">
+                  {filteredRows.length} de {serviceRows.length}
+                </span>
+              </div>
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por cliente, servicio o fecha"
+                  className="pl-8 h-9"
+                  data-testid="input-search-services"
+                />
+              </div>
+              {serviceRows.length === 0 ? (
+                <Card className="p-4 text-center text-sm text-muted-foreground">
+                  Sin servicios en el periodo
+                </Card>
+              ) : filteredRows.length === 0 ? (
+                <Card className="p-4 text-center text-sm text-muted-foreground">
+                  Sin resultados para tu búsqueda
+                </Card>
+              ) : (
+                <div
+                  className="max-h-[26rem] overflow-y-auto space-y-2 pr-1 rounded-md border bg-muted/20 p-2"
+                  data-testid="services-list-scroll"
+                >
+                  {filteredRows.map((s) => (
+                    <Card key={s.id} className="p-3" data-testid={`earning-${s.id}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-muted-foreground">
+                            {formatDateShort(s.date)} · {s.time}
+                          </p>
+                          <p className="font-medium truncate">{s.clientName}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {s.washType.name} · {s.vehicleSize.name}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-semibold">{formatCurrency(s.amount)}</p>
+                          <div className="mt-1">
+                            <PaymentBadge type={s.paymentType} status={s.paymentStatus} />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </section>
           </>
         )}
