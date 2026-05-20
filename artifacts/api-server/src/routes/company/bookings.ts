@@ -191,13 +191,18 @@ router.get("/company/dashboard", requireCompany(), async (req, res): Promise<voi
   );
   const nextBooking = active ?? upcoming[0] ?? null;
 
-  const reviewStats = await db
-    .select({
-      avg: sql<string>`AVG(${bookingReviewsTable.rating})`,
-      total: sql<number>`COUNT(*)::int`,
-    })
-    .from(bookingReviewsTable)
-    .where(eq(bookingReviewsTable.companyId, companyId));
+  const reviewStats = await db.execute<{ avg: string | null; total: number }>(
+    sql`
+      SELECT AVG(rating)::text AS avg, COUNT(*)::int AS total
+      FROM (
+        SELECT rating
+        FROM ${bookingReviewsTable}
+        WHERE ${bookingReviewsTable.companyId} = ${companyId}
+        ORDER BY ${bookingReviewsTable.createdAt} DESC
+        LIMIT 100
+      ) recent
+    `,
+  );
 
   const recentReviewRows = await db
     .select({
@@ -214,9 +219,10 @@ router.get("/company/dashboard", requireCompany(), async (req, res): Promise<voi
     .orderBy(desc(bookingReviewsTable.createdAt))
     .limit(50);
 
-  const avg = reviewStats[0]?.avg;
+  const statsRow = (reviewStats as unknown as { rows: { avg: string | null; total: number }[] }).rows[0];
+  const avg = statsRow?.avg;
   const rating = avg != null ? Number(Number(avg).toFixed(2)) : null;
-  const totalReviews = Number(reviewStats[0]?.total ?? 0);
+  const totalReviews = Number(statsRow?.total ?? 0);
 
   res.json({
     date,

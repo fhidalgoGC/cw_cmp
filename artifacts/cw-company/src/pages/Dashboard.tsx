@@ -224,7 +224,7 @@ function RatingCard({
           <p className="text-xs text-muted-foreground mt-1">
             {total === 0
               ? "Aún sin calificaciones"
-              : "Promedio de tus clientes"}
+              : "Promedio de las últimas 100 reservas"}
           </p>
         </div>
       </div>
