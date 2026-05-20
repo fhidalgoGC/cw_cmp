@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   setAuthTokenGetter,
+  setUnauthorizedHandler,
   login as apiLogin,
   logout as apiLogout,
   getMe,
@@ -19,6 +20,16 @@ setAuthTokenGetter(() => currentToken);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      if (!currentToken) return;
+      currentToken = null;
+      window.localStorage.removeItem(TOKEN_KEY);
+      setUser(null);
+    });
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

@@ -44,6 +44,18 @@ export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
 }
 
+type UnauthorizedHandler = () => void;
+let _unauthorizedHandler: UnauthorizedHandler | null = null;
+
+/**
+ * Register a handler invoked when any request returns HTTP 401.
+ * Useful for clearing stale auth state and redirecting to login.
+ * Pass `null` to clear the handler.
+ */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  _unauthorizedHandler = handler;
+}
+
 function isRequest(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
 }
@@ -364,6 +376,13 @@ export async function customFetch<T = unknown>(
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
+    if (response.status === 401 && _unauthorizedHandler) {
+      try {
+        _unauthorizedHandler();
+      } catch {
+        // ignore handler errors
+      }
+    }
     throw new ApiError(response, errorData, requestInfo);
   }
 
