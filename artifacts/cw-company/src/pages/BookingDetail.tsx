@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, CompanyStatusBadge, PaymentBadge } from "@/components/StatusBadge";
 import { formatCurrency, formatDateLong } from "@/lib/format";
-import { ChevronLeft, Phone, MapPin, Car, Clock, Star } from "lucide-react";
+import { Phone, MapPin, Car, Clock, Star } from "lucide-react";
 import { toast } from "sonner";
 
 export default function BookingDetail({ id }: { id: string }) {
@@ -51,16 +51,7 @@ export default function BookingDetail({ id }: { id: string }) {
 
   return (
     <MobileFrame>
-      <AppHeader
-        title="Detalle de reserva"
-        right={
-          <Link href="/bookings">
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-        }
-      />
+      <AppHeader title="Detalle de reserva" back="/bookings" />
       <main className="flex-1 overflow-y-auto pb-24">
         <div className="p-4 space-y-4">
           {isLoading && <Skeleton className="h-64 w-full" />}
