@@ -211,7 +211,7 @@ router.get("/company/dashboard", requireCompany(), async (req, res): Promise<voi
     .innerJoin(bookingsTable, eq(bookingsTable.id, bookingReviewsTable.bookingId))
     .where(eq(bookingReviewsTable.companyId, companyId))
     .orderBy(desc(bookingReviewsTable.createdAt))
-    .limit(5);
+    .limit(50);
 
   const avg = reviewStats[0]?.avg;
   const rating = avg != null ? Number(Number(avg).toFixed(2)) : null;

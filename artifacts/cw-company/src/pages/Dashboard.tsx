@@ -1,9 +1,27 @@
+import { useState, useMemo } from "react";
 import { useGetCompanyDashboard, useGetCompanyProfile } from "@workspace/api-client-react";
 import { AppShell, AppHeader } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDateLong, todayIso } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { Calendar, CheckCircle2, Clock, AlertCircle, Star, MessageSquare } from "lucide-react";
+
+type ReviewFilter = "all" | "good" | "regular" | "bad";
+
+const FILTERS: { id: ReviewFilter; label: string }[] = [
+  { id: "all", label: "Todos" },
+  { id: "good", label: "Buenos" },
+  { id: "regular", label: "Regular" },
+  { id: "bad", label: "Malos" },
+];
+
+function matchesFilter(rating: number, filter: ReviewFilter) {
+  if (filter === "all") return true;
+  if (filter === "good") return rating >= 4;
+  if (filter === "regular") return rating === 3;
+  return rating <= 2;
+}
 
 export default function Dashboard() {
   const today = todayIso();
@@ -60,20 +78,7 @@ export default function Dashboard() {
               />
             </section>
 
-            <section>
-              <h2 className="text-sm font-semibold mb-2">Últimos comentarios</h2>
-              <div className="space-y-2">
-                {((data as any)?.recentReviews ?? []).length === 0 ? (
-                  <Card className="p-4 text-center text-sm text-muted-foreground">
-                    Aún no hay reseñas de clientes
-                  </Card>
-                ) : (
-                  ((data as any)?.recentReviews ?? []).map((r: any) => (
-                    <ReviewRow key={r.id} review={r} />
-                  ))
-                )}
-              </div>
-            </section>
+            <ReviewsSection reviews={(data as any)?.recentReviews ?? []} />
           </>
         )}
       </div>
@@ -110,6 +115,73 @@ function StatCard({
       <p className="text-xs text-muted-foreground mt-2">{label}</p>
       <p className="text-lg font-semibold">{value}</p>
     </Card>
+  );
+}
+
+function ReviewsSection({ reviews }: { reviews: any[] }) {
+  const [filter, setFilter] = useState<ReviewFilter>("all");
+
+  const counts = useMemo(
+    () => ({
+      all: reviews.length,
+      good: reviews.filter((r) => r.rating >= 4).length,
+      regular: reviews.filter((r) => r.rating === 3).length,
+      bad: reviews.filter((r) => r.rating <= 2).length,
+    }),
+    [reviews],
+  );
+
+  const filtered = reviews.filter((r) => matchesFilter(r.rating, filter));
+
+  return (
+    <section>
+      <h2 className="text-sm font-semibold mb-2">Comentarios de clientes</h2>
+      <div className="flex gap-1.5 mb-2 overflow-x-auto -mx-1 px-1 pb-1">
+        {FILTERS.map((f) => {
+          const active = filter === f.id;
+          return (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setFilter(f.id)}
+              data-testid={`filter-${f.id}`}
+              className={cn(
+                "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors hover-elevate active-elevate-2",
+                active
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-background text-foreground border-border",
+              )}
+            >
+              {f.label}
+              <span
+                className={cn(
+                  "ml-1.5 text-[10px]",
+                  active ? "opacity-70" : "text-muted-foreground",
+                )}
+              >
+                {counts[f.id]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div
+        className="space-y-2 max-h-80 overflow-y-auto pr-1 -mr-1"
+        data-testid="reviews-scroll"
+      >
+        {reviews.length === 0 ? (
+          <Card className="p-4 text-center text-sm text-muted-foreground">
+            Aún no hay reseñas de clientes
+          </Card>
+        ) : filtered.length === 0 ? (
+          <Card className="p-4 text-center text-sm text-muted-foreground">
+            No hay comentarios en esta categoría
+          </Card>
+        ) : (
+          filtered.map((r: any) => <ReviewRow key={r.id} review={r} />)
+        )}
+      </div>
+    </section>
   );
 }
 
