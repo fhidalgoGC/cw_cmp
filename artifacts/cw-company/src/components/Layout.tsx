@@ -2,9 +2,9 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
   ClipboardList,
-  CalendarClock,
   Package,
   Wrench,
+  Wallet,
   User,
   ChevronLeft,
 } from "lucide-react";
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
 const tabs = [
   { path: "/", label: "Inicio", icon: LayoutDashboard },
   { path: "/bookings", label: "Reservas", icon: ClipboardList },
-  { path: "/schedule", label: "Horarios", icon: CalendarClock },
+  { path: "/earnings", label: "Ingresos", icon: Wallet },
   { path: "/profile", label: "Perfil", icon: User },
 ];
 
