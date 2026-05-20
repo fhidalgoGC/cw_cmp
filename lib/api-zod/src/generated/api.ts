@@ -201,6 +201,7 @@ export const GetCompanyDashboardResponse = zod.object({
   "totalReviews": zod.number(),
   "recentReviews": zod.array(zod.object({
   "id": zod.string(),
+  "bookingId": zod.string(),
   "rating": zod.number().min(1).max(getCompanyDashboardResponseRecentReviewsItemRatingMax),
   "comment": zod.string().nullable(),
   "clientName": zod.string(),

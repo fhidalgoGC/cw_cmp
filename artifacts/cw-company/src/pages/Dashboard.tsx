@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Link } from "wouter";
 import { useGetCompanyDashboard, useGetCompanyProfile } from "@workspace/api-client-react";
 import { AppShell, AppHeader } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
@@ -233,7 +234,11 @@ function RatingCard({
 
 function ReviewRow({ review }: { review: any }) {
   return (
-    <Card className="p-3" data-testid={`review-${review.id}`}>
+    <Link href={`/bookings/${review.bookingId}`}>
+      <Card
+        className="p-3 hover-elevate active-elevate-2 cursor-pointer"
+        data-testid={`review-${review.id}`}
+      >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-semibold truncate">{review.clientName}</p>
         <div className="flex items-center gap-0.5 shrink-0">
@@ -259,6 +264,7 @@ function ReviewRow({ review }: { review: any }) {
           Sin comentario
         </p>
       )}
-    </Card>
+      </Card>
+    </Link>
   );
 }

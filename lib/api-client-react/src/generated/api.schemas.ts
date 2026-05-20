@@ -162,6 +162,7 @@ export type CompanyDashboardSummary = {
 
 export type CompanyDashboardRecentReviewsItem = {
   id: string;
+  bookingId: string;
   /**
      * @minimum 1
      * @maximum 5

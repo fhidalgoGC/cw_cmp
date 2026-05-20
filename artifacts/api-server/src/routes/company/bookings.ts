@@ -202,6 +202,7 @@ router.get("/company/dashboard", requireCompany(), async (req, res): Promise<voi
   const recentReviewRows = await db
     .select({
       id: bookingReviewsTable.id,
+      bookingId: bookingReviewsTable.bookingId,
       rating: bookingReviewsTable.rating,
       comment: bookingReviewsTable.comment,
       createdAt: bookingReviewsTable.createdAt,
@@ -228,6 +229,7 @@ router.get("/company/dashboard", requireCompany(), async (req, res): Promise<voi
     totalReviews,
     recentReviews: recentReviewRows.map((r) => ({
       id: r.id,
+      bookingId: r.bookingId,
       rating: r.rating,
       comment: r.comment,
       clientName: r.clientName,
