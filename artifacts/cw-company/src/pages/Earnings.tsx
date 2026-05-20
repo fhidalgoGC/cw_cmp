@@ -27,9 +27,29 @@ export default function Earnings() {
   }, [days]);
 
   const { data, isLoading } = useGetCompanyEarnings(range);
-  const { data: services } = useListCompanyEarningServices({ ...range, limit: 20 });
+  const { data: services } = useListCompanyEarningServices({
+    ...range,
+    limit: days === 1 ? 200 : 20,
+  });
   const summary = data as any;
   const serviceRows = ((services as any)?.data ?? []) as any[];
+
+  // Cuando el filtro es "Hoy" agrupamos por hora a partir de los servicios
+  const hourlySeries = useMemo(() => {
+    if (days !== 1) return null;
+    const bins = new Map<number, number>();
+    for (const s of serviceRows) {
+      const h = parseInt(String(s.time ?? "").slice(0, 2), 10);
+      if (Number.isNaN(h)) continue;
+      bins.set(h, (bins.get(h) ?? 0) + Number(s.amount ?? 0));
+    }
+    const hoursWithData = [...bins.keys()];
+    const lo = Math.min(8, ...(hoursWithData.length ? hoursWithData : [8]));
+    const hi = Math.max(18, ...(hoursWithData.length ? hoursWithData : [18]));
+    const out: { hour: number; amount: number }[] = [];
+    for (let h = lo; h <= hi; h++) out.push({ hour: h, amount: bins.get(h) ?? 0 });
+    return out;
+  }, [days, serviceRows]);
 
   return (
     <AppShell>
@@ -91,24 +111,44 @@ export default function Earnings() {
             </div>
 
             <Card className="p-4">
-              <h3 className="text-sm font-semibold mb-2">Ingresos por día</h3>
+              <h3 className="text-sm font-semibold mb-2">
+                {hourlySeries ? "Ingresos por hora" : "Ingresos por día"}
+              </h3>
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={summary.dailySeries}>
-                    <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={(d: string) => formatDateShort(d)}
-                      tick={{ fontSize: 10 }}
-                      interval="preserveStartEnd"
-                    />
-                    <Tooltip
-                      formatter={(v: number) => formatCurrency(v)}
-                      labelFormatter={(d: string) => formatDateShort(d)}
-                      contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                    />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                  {hourlySeries ? (
+                    <BarChart data={hourlySeries}>
+                      <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
+                      <XAxis
+                        dataKey="hour"
+                        tickFormatter={(h: number) => `${String(h).padStart(2, "0")}:00`}
+                        tick={{ fontSize: 10 }}
+                        interval="preserveStartEnd"
+                      />
+                      <Tooltip
+                        formatter={(v: number) => formatCurrency(v)}
+                        labelFormatter={(h: number) => `${String(h).padStart(2, "0")}:00`}
+                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                      />
+                      <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  ) : (
+                    <BarChart data={summary.dailySeries}>
+                      <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={(d: string) => formatDateShort(d)}
+                        tick={{ fontSize: 10 }}
+                        interval="preserveStartEnd"
+                      />
+                      <Tooltip
+                        formatter={(v: number) => formatCurrency(v)}
+                        labelFormatter={(d: string) => formatDateShort(d)}
+                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                      />
+                      <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
                 </ResponsiveContainer>
               </div>
             </Card>
