@@ -459,13 +459,16 @@ components:
 
     CompanyProfile:
       type: object
-      required: [id, name, email, phone, active, totalBookings, completedBookings, createdAt]
+      required: [id, name, email, phone, active, status, totalBookings, completedBookings, createdAt]
       properties:
         id: { type: string }
         name: { type: string }
         email: { type: string }
         phone: { type: string }
         active: { type: boolean }
+        status:
+          type: string
+          enum: [review, active, denied]
         rating: { type: ["number", "null"] }
         totalBookings: { type: integer }
         completedBookings: { type: integer }

@@ -5,6 +5,7 @@
  * Car Wash - Company (Empresa) API
  * OpenAPI spec version: 0.1.0
  */
+import type { CompanyProfileStatus } from './companyProfileStatus';
 
 export interface CompanyProfile {
   id: string;
@@ -12,6 +13,7 @@ export interface CompanyProfile {
   email: string;
   phone: string;
   active: boolean;
+  status: CompanyProfileStatus;
   /** @nullable */
   rating?: number | null;
   totalBookings: number;

@@ -27,6 +27,7 @@ export * from './companyPackageOption';
 export * from './companyPackagesUpdate';
 export * from './companyPackageToggle';
 export * from './companyProfile';
+export * from './companyProfileStatus';
 export * from './companyProfileUpdate';
 export * from './companyServiceOption';
 export * from './companyServiceOptionKind';

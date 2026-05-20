@@ -41,6 +41,7 @@ export const companiesTable = pgTable("companies", {
   email: text("email").notNull().unique(),
   phone: text("phone").notNull().default(""),
   active: boolean("active").notNull().default(true),
+  status: text("status").notNull().default("review"),
   rating: numeric("rating", { precision: 3, scale: 2 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

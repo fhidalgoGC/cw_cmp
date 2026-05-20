@@ -37,6 +37,7 @@ async function respondWithProfile(req: Request, res: Response): Promise<void> {
     email: company.email,
     phone: company.phone,
     active: company.active,
+    status: company.status,
     rating: company.rating != null ? Number(company.rating) : null,
     totalBookings: Number(total),
     completedBookings: Number(completed),

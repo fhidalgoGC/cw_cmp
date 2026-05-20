@@ -111,6 +111,7 @@ async function main() {
       email: "empresa1@carwash.mx",
       phone: "+52 55 1234 5678",
       active: true,
+      status: "active",
       rating: "4.80",
     })
     .returning();

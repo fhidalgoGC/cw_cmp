@@ -14,6 +14,7 @@ import Packages from "@/pages/Packages";
 import Services from "@/pages/Services";
 import Earnings from "@/pages/Earnings";
 import Profile from "@/pages/Profile";
+import CompanyData from "@/pages/CompanyData";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,6 +60,7 @@ function ProtectedRoutes() {
           <Route path="/services" component={Services} />
           <Route path="/earnings" component={Earnings} />
           <Route path="/profile" component={Profile} />
+          <Route path="/company-data" component={CompanyData} />
         </>
       )}
       <Route component={NotFound} />

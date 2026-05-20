@@ -59,12 +59,22 @@ export interface AuthResult {
   token: string;
 }
 
+export type CompanyProfileStatus = typeof CompanyProfileStatus[keyof typeof CompanyProfileStatus];
+
+
+export const CompanyProfileStatus = {
+  review: 'review',
+  active: 'active',
+  denied: 'denied',
+} as const;
+
 export interface CompanyProfile {
   id: string;
   name: string;
   email: string;
   phone: string;
   active: boolean;
+  status: CompanyProfileStatus;
   /** @nullable */
   rating?: number | null;
   totalBookings: number;
