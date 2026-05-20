@@ -35,7 +35,11 @@ export default function CompanyData() {
 
   return (
     <AppShell>
-      <AppHeader title="Datos del negocio" subtitle="Información de tu empresa" />
+      <AppHeader
+        title="Datos del negocio"
+        subtitle="Información de tu empresa"
+        back="/profile"
+      />
       <div className="p-4 space-y-4">
         {isLoading && <Skeleton className="h-64 w-full" />}
         {p && (

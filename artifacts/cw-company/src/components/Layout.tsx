@@ -7,7 +7,9 @@ import {
   Wrench,
   Wallet,
   User,
+  ChevronLeft,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -38,18 +40,43 @@ export function AppHeader({
   title,
   right,
   subtitle,
+  back,
 }: {
   title: string;
   subtitle?: string;
   right?: ReactNode;
+  /** When provided, renders a back chevron on the left that links to this path. */
+  back?: string;
 }) {
   return (
-    <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
-      <div>
-        <h1 className="text-lg font-semibold leading-tight" data-testid="app-header-title">{title}</h1>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+    <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b px-2 py-3 flex items-center justify-between gap-2">
+      <div className="flex items-center gap-1 min-w-0 flex-1">
+        {back && (
+          <Link href={back}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0 -ml-1"
+              data-testid="button-back"
+              aria-label="Volver"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+        )}
+        <div className={cn("min-w-0", !back && "pl-2")}>
+          <h1
+            className="text-lg font-semibold leading-tight truncate"
+            data-testid="app-header-title"
+          >
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-2">{right}</div>
+      <div className="flex items-center gap-2 pr-2">{right}</div>
     </header>
   );
 }

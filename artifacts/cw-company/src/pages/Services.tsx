@@ -44,6 +44,7 @@ export default function Services() {
       <AppHeader
         title="Servicios"
         subtitle="Tipos de lavado y adicionales"
+        back="/profile"
         right={
           <Button size="sm" onClick={save} disabled={update.isPending} data-testid="button-save">
             Guardar

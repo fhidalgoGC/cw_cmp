@@ -36,6 +36,7 @@ export default function Packages() {
       <AppHeader
         title="Paquetes"
         subtitle="Planes que ofrece tu empresa"
+        back="/profile"
         right={
           <Button size="sm" onClick={save} disabled={update.isPending} data-testid="button-save">
             Guardar
