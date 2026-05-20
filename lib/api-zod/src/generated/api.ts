@@ -108,6 +108,8 @@ export const getCompanyDashboardResponseNextBookingOneReviewOneRatingMax = 5;
 
 export const getCompanyDashboardResponseUpcomingItemReviewOneRatingMax = 5;
 
+export const getCompanyDashboardResponseRecentReviewsItemRatingMax = 5;
+
 
 
 export const GetCompanyDashboardResponse = zod.object({
@@ -193,6 +195,15 @@ export const GetCompanyDashboardResponse = zod.object({
   "comment": zod.string().nullish(),
   "createdAt": zod.string()
 }),zod.null()]).optional(),
+  "createdAt": zod.string()
+})),
+  "rating": zod.number().nullable(),
+  "totalReviews": zod.number(),
+  "recentReviews": zod.array(zod.object({
+  "id": zod.string(),
+  "rating": zod.number().min(1).max(getCompanyDashboardResponseRecentReviewsItemRatingMax),
+  "comment": zod.string().nullable(),
+  "clientName": zod.string(),
   "createdAt": zod.string()
 }))
 })

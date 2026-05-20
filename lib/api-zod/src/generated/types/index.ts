@@ -20,6 +20,7 @@ export * from './companyBooking';
 export * from './companyBookingCompanyStatus';
 export * from './companyBookingList';
 export * from './companyDashboard';
+export * from './companyDashboardRecentReviewsItem';
 export * from './companyDashboardSummary';
 export * from './companyEarnings';
 export * from './companyEarningsByType';

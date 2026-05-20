@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CompanyBooking } from './companyBooking';
+import type { CompanyDashboardRecentReviewsItem } from './companyDashboardRecentReviewsItem';
 import type { CompanyDashboardSummary } from './companyDashboardSummary';
 
 export interface CompanyDashboard {
@@ -13,4 +14,8 @@ export interface CompanyDashboard {
   summary: CompanyDashboardSummary;
   nextBooking: CompanyBooking | null;
   upcoming: CompanyBooking[];
+  /** @nullable */
+  rating: number | null;
+  totalReviews: number;
+  recentReviews: CompanyDashboardRecentReviewsItem[];
 }

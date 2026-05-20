@@ -1,12 +1,9 @@
-import { Link } from "wouter";
 import { useGetCompanyDashboard, useGetCompanyProfile } from "@workspace/api-client-react";
 import { AppShell, AppHeader } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBadge } from "@/components/StatusBadge";
 import { formatCurrency, formatDateLong, todayIso } from "@/lib/format";
-import { Calendar, CheckCircle2, Clock, MapPin, Car, AlertCircle } from "lucide-react";
+import { Calendar, CheckCircle2, Clock, AlertCircle, Star, MessageSquare } from "lucide-react";
 
 export default function Dashboard() {
   const today = todayIso();
@@ -56,32 +53,25 @@ export default function Dashboard() {
             </div>
 
             <section>
-              <h2 className="text-sm font-semibold mb-2">Siguiente reserva</h2>
-              {(data as any)?.nextBooking ? (
-                <NextBookingCard booking={(data as any).nextBooking} />
-              ) : (
-                <Card className="p-4 text-center text-sm text-muted-foreground">
-                  No hay reservas próximas
-                </Card>
-              )}
+              <h2 className="text-sm font-semibold mb-2">Calificación general</h2>
+              <RatingCard
+                rating={(data as any)?.rating ?? null}
+                total={(data as any)?.totalReviews ?? 0}
+              />
             </section>
 
             <section>
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-semibold">Agenda de hoy</h2>
-                <Link href="/bookings">
-                  <Button variant="ghost" size="sm" data-testid="link-all-bookings">Ver todas</Button>
-                </Link>
-              </div>
+              <h2 className="text-sm font-semibold mb-2">Últimos comentarios</h2>
               <div className="space-y-2">
-                {((data as any)?.upcoming ?? []).length === 0 && (
+                {((data as any)?.recentReviews ?? []).length === 0 ? (
                   <Card className="p-4 text-center text-sm text-muted-foreground">
-                    Sin reservas pendientes hoy
+                    Aún no hay reseñas de clientes
                   </Card>
+                ) : (
+                  ((data as any)?.recentReviews ?? []).map((r: any) => (
+                    <ReviewRow key={r.id} review={r} />
+                  ))
                 )}
-                {((data as any)?.upcoming ?? []).map((b: any) => (
-                  <BookingRow key={b.id} booking={b} />
-                ))}
               </div>
             </section>
           </>
@@ -123,50 +113,80 @@ function StatCard({
   );
 }
 
-function NextBookingCard({ booking }: { booking: any }) {
+function RatingCard({
+  rating,
+  total,
+}: {
+  rating: number | null;
+  total: number;
+}) {
+  const value = rating ?? 0;
   return (
-    <Link href={`/bookings/${booking.id}`}>
-      <Card className="p-4 hover-elevate active-elevate-2 cursor-pointer" data-testid={`next-booking-${booking.id}`}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground">{booking.time} hrs</p>
-            <p className="font-semibold truncate">{booking.clientName}</p>
-            <p className="text-sm text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-              <Car className="h-3 w-3 shrink-0" />
-              {booking.vehicleBrand} {booking.vehicleModel} · {booking.washType.name}
-            </p>
-            <p className="text-sm text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-              <MapPin className="h-3 w-3 shrink-0" />
-              {booking.addressFull}
-            </p>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="font-semibold">{formatCurrency(booking.totalPrice)}</p>
-            <div className="mt-1"><StatusBadge status={booking.status} /></div>
-          </div>
+    <Card
+      className="p-4 border-amber-200 bg-amber-50/50"
+      data-testid="card-rating"
+    >
+      <div className="flex items-center gap-4">
+        <div className="text-center shrink-0">
+          <p className="text-3xl font-bold text-amber-700 leading-none">
+            {rating != null ? rating.toFixed(1) : "—"}
+          </p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-1">
+            {total} {total === 1 ? "reseña" : "reseñas"}
+          </p>
         </div>
-      </Card>
-    </Link>
+        <div className="flex-1">
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Star
+                key={n}
+                className={
+                  n <= Math.round(value)
+                    ? "h-5 w-5 fill-amber-400 text-amber-400"
+                    : "h-5 w-5 text-muted-foreground/30"
+                }
+              />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {total === 0
+              ? "Aún sin calificaciones"
+              : "Promedio de tus clientes"}
+          </p>
+        </div>
+      </div>
+    </Card>
   );
 }
 
-function BookingRow({ booking }: { booking: any }) {
+function ReviewRow({ review }: { review: any }) {
   return (
-    <Link href={`/bookings/${booking.id}`}>
-      <Card className="p-3 hover-elevate active-elevate-2 cursor-pointer" data-testid={`booking-row-${booking.id}`}>
-        <div className="flex items-center gap-3">
-          <div className="w-12 text-center">
-            <p className="text-sm font-semibold">{booking.time}</p>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{booking.clientName}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {booking.washType.name} · {booking.vehicleSize.name}
-            </p>
-          </div>
-          <StatusBadge status={booking.status} />
+    <Card className="p-3" data-testid={`review-${review.id}`}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-semibold truncate">{review.clientName}</p>
+        <div className="flex items-center gap-0.5 shrink-0">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <Star
+              key={n}
+              className={
+                n <= review.rating
+                  ? "h-3.5 w-3.5 fill-amber-400 text-amber-400"
+                  : "h-3.5 w-3.5 text-muted-foreground/30"
+              }
+            />
+          ))}
         </div>
-      </Card>
-    </Link>
+      </div>
+      {review.comment ? (
+        <p className="text-sm text-foreground/90 italic mt-1.5">
+          “{review.comment}”
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+          <MessageSquare className="h-3 w-3" />
+          Sin comentario
+        </p>
+      )}
+    </Card>
   );
 }

@@ -160,11 +160,28 @@ export type CompanyDashboardSummary = {
   revenueToday: number;
 };
 
+export type CompanyDashboardRecentReviewsItem = {
+  id: string;
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating: number;
+  /** @nullable */
+  comment: string | null;
+  clientName: string;
+  createdAt: string;
+};
+
 export interface CompanyDashboard {
   date: string;
   summary: CompanyDashboardSummary;
   nextBooking: CompanyBooking | null;
   upcoming: CompanyBooking[];
+  /** @nullable */
+  rating: number | null;
+  totalReviews: number;
+  recentReviews: CompanyDashboardRecentReviewsItem[];
 }
 
 export interface CompanySlot {

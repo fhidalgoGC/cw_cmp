@@ -191,6 +191,32 @@ router.get("/company/dashboard", requireCompany(), async (req, res): Promise<voi
   );
   const nextBooking = active ?? upcoming[0] ?? null;
 
+  const reviewStats = await db
+    .select({
+      avg: sql<string>`AVG(${bookingReviewsTable.rating})`,
+      total: sql<number>`COUNT(*)::int`,
+    })
+    .from(bookingReviewsTable)
+    .where(eq(bookingReviewsTable.companyId, companyId));
+
+  const recentReviewRows = await db
+    .select({
+      id: bookingReviewsTable.id,
+      rating: bookingReviewsTable.rating,
+      comment: bookingReviewsTable.comment,
+      createdAt: bookingReviewsTable.createdAt,
+      clientName: bookingsTable.clientName,
+    })
+    .from(bookingReviewsTable)
+    .innerJoin(bookingsTable, eq(bookingsTable.id, bookingReviewsTable.bookingId))
+    .where(eq(bookingReviewsTable.companyId, companyId))
+    .orderBy(desc(bookingReviewsTable.createdAt))
+    .limit(5);
+
+  const avg = reviewStats[0]?.avg;
+  const rating = avg != null ? Number(Number(avg).toFixed(2)) : null;
+  const totalReviews = Number(reviewStats[0]?.total ?? 0);
+
   res.json({
     date,
     summary,
@@ -198,6 +224,15 @@ router.get("/company/dashboard", requireCompany(), async (req, res): Promise<voi
     upcoming: serialized.filter(
       (b) => b.status !== "completed" && b.status !== "cancelled",
     ),
+    rating,
+    totalReviews,
+    recentReviews: recentReviewRows.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      comment: r.comment,
+      clientName: r.clientName,
+      createdAt: r.createdAt.toISOString(),
+    })),
   });
 });
 

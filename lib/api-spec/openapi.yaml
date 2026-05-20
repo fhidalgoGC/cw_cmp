@@ -564,7 +564,7 @@ components:
 
     CompanyDashboard:
       type: object
-      required: [date, summary, nextBooking, upcoming]
+      required: [date, summary, nextBooking, upcoming, rating, totalReviews, recentReviews]
       properties:
         date: { type: string }
         summary:
@@ -593,6 +593,20 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CompanyBooking"
+        rating:
+          type: ["number", "null"]
+        totalReviews: { type: integer }
+        recentReviews:
+          type: array
+          items:
+            type: object
+            required: [id, rating, comment, clientName, createdAt]
+            properties:
+              id: { type: string }
+              rating: { type: integer, minimum: 1, maximum: 5 }
+              comment: { type: ["string", "null"] }
+              clientName: { type: string }
+              createdAt: { type: string }
 
     CompanySlot:
       type: object
