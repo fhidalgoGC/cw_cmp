@@ -54,8 +54,8 @@ function dateToIso(date: Date): string {
 
 export default function Bookings() {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<string>("");
-  const [dateMode, setDateMode] = useState<DateMode>({ kind: "preset", days: 30 });
+  const [status, setStatus] = useState<string>("pending");
+  const [dateMode, setDateMode] = useState<DateMode>({ kind: "preset", days: 1 });
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const range = useMemo(() => {
