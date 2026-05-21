@@ -144,7 +144,7 @@ export default function Bookings() {
                 Toca la fecha inicial y luego la final.
               </p>
             </SheetHeader>
-            <div className="flex justify-center px-2">
+            <div className="px-2 pb-2">
               <Calendar
                 mode="range"
                 locale={es}
@@ -161,6 +161,8 @@ export default function Bookings() {
                     setPickerOpen(false);
                   }
                 }}
+                className="w-full [--cell-size:2.75rem]"
+                classNames={{ root: "w-full" }}
               />
             </div>
             <div className="sticky bottom-0 bg-background border-t p-3 flex gap-2">
