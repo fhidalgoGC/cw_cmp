@@ -31,10 +31,7 @@ export default function Dashboard() {
 
   return (
     <AppShell>
-      <AppHeader
-        title={`Hola, ${(profile as any)?.name ?? "Empresa"}`}
-        subtitle={formatDateLong(today)}
-      />
+      <AppHeader title={(profile as any)?.name ?? "Empresa"} />
 
       <div className="p-4 space-y-4">
         {isLoading ? (
