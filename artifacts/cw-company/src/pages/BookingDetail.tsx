@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, CompanyStatusBadge, PaymentBadge } from "@/components/StatusBadge";
 import { formatCurrency, formatDateLong } from "@/lib/format";
-import { Phone, MapPin, Car, Clock, Star } from "lucide-react";
+import { Phone, MapPin, Car, Clock, Star, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
 export default function BookingDetail({ id }: { id: string }) {
@@ -81,6 +81,21 @@ export default function BookingDetail({ id }: { id: string }) {
                   </div>
                 </div>
               </Card>
+
+              {b.comments && (
+                <Card
+                  className="p-4 space-y-1.5 border-sky-200 bg-sky-50/60"
+                  data-testid="card-client-notes"
+                >
+                  <h3 className="text-sm font-semibold flex items-center gap-1.5 text-sky-800">
+                    <MessageSquare className="h-4 w-4" />
+                    Observaciones del cliente
+                  </h3>
+                  <p className="text-sm text-foreground/90 whitespace-pre-line">
+                    {b.comments}
+                  </p>
+                </Card>
+              )}
 
               {b.status === "completed" && (
                 <Card
@@ -181,12 +196,6 @@ export default function BookingDetail({ id }: { id: string }) {
                         <li key={a.id}>· {a.name}</li>
                       ))}
                     </ul>
-                  </div>
-                )}
-                {b.comments && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Comentarios</p>
-                    <p className="text-sm">{b.comments}</p>
                   </div>
                 )}
               </Card>
