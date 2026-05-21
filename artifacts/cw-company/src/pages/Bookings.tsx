@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { StatusBadge, CompanyStatusBadge } from "@/components/StatusBadge";
 import {
   formatCurrency,
@@ -57,6 +58,7 @@ export default function Bookings() {
   const [status, setStatus] = useState<string>("pending");
   const [dateMode, setDateMode] = useState<DateMode>({ kind: "preset", days: 1 });
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [draftRange, setDraftRange] = useState<DateRange | undefined>(undefined);
 
   const range = useMemo(() => {
     if (dateMode.kind === "preset") {
@@ -110,31 +112,46 @@ export default function Bookings() {
               </Button>
             );
           })}
-          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                size="sm"
-                variant={dateMode.kind === "custom" ? "default" : "outline"}
-                className="shrink-0"
-                data-testid="date-range-custom"
-              >
-                <CalendarIcon className="h-4 w-4 mr-1.5" />
-                {dateMode.kind === "custom"
-                  ? `${formatDateShort(dateMode.from)} – ${formatDateShort(dateMode.to)}`
-                  : "Rango"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+          <Button
+            size="sm"
+            variant={dateMode.kind === "custom" ? "default" : "outline"}
+            className="shrink-0"
+            data-testid="date-range-custom"
+            onClick={() => {
+              setDraftRange(
+                dateMode.kind === "custom"
+                  ? { from: isoToDate(dateMode.from), to: isoToDate(dateMode.to) }
+                  : undefined,
+              );
+              setPickerOpen(true);
+            }}
+          >
+            <CalendarIcon className="h-4 w-4 mr-1.5" />
+            {dateMode.kind === "custom"
+              ? `${formatDateShort(dateMode.from)} – ${formatDateShort(dateMode.to)}`
+              : "Rango"}
+          </Button>
+        </div>
+
+        <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
+          <SheetContent
+            side="bottom"
+            className="rounded-t-2xl p-0 max-h-[90vh] overflow-y-auto"
+          >
+            <SheetHeader className="px-4 pt-4 pb-2 text-left">
+              <SheetTitle>Selecciona el rango</SheetTitle>
+              <p className="text-xs text-muted-foreground">
+                Toca la fecha inicial y luego la final.
+              </p>
+            </SheetHeader>
+            <div className="flex justify-center px-2">
               <Calendar
                 mode="range"
                 locale={es}
                 numberOfMonths={1}
-                selected={
-                  dateMode.kind === "custom"
-                    ? { from: isoToDate(dateMode.from), to: isoToDate(dateMode.to) }
-                    : undefined
-                }
+                selected={draftRange}
                 onSelect={(r: DateRange | undefined) => {
+                  setDraftRange(r);
                   if (r?.from && r?.to) {
                     setDateMode({
                       kind: "custom",
@@ -145,9 +162,39 @@ export default function Bookings() {
                   }
                 }}
               />
-            </PopoverContent>
-          </Popover>
-        </div>
+            </div>
+            <div className="sticky bottom-0 bg-background border-t p-3 flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setDraftRange(undefined);
+                  setPickerOpen(false);
+                }}
+                data-testid="button-range-cancel"
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={!draftRange?.from || !draftRange?.to}
+                onClick={() => {
+                  if (draftRange?.from && draftRange?.to) {
+                    setDateMode({
+                      kind: "custom",
+                      from: dateToIso(draftRange.from),
+                      to: dateToIso(draftRange.to),
+                    });
+                  }
+                  setPickerOpen(false);
+                }}
+                data-testid="button-range-apply"
+              >
+                Aplicar
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
         <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1">
           {STATUS_TABS.map((t) => (
             <Button
