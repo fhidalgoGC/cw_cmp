@@ -221,24 +221,24 @@ async function main() {
   }> = [];
 
   const fixtures = [
-    { offset: -25, time: "09:00", client: 0, size: 0, wash: "basico", addons: ["interior"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo" },
-    { offset: -22, time: "11:30", client: 1, size: 1, wash: "premium", addons: ["motor", "aromatizante"], status: "completed", companyStatus: "accepted_by_company", paymentType: "membresia" },
-    { offset: -18, time: "14:00", client: 2, size: 2, wash: "detallado", addons: ["tapiceria", "cera"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo" },
-    { offset: -14, time: "10:00", client: 3, size: 0, wash: "express", addons: [], status: "completed", companyStatus: "accepted_by_company", paymentType: "membresia" },
-    { offset: -10, time: "16:00", client: 0, size: 1, wash: "encerado", addons: ["rines"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo" },
-    { offset: -7, time: "12:00", client: 1, size: 2, wash: "premium", addons: ["interior", "vidrios"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo" },
-    { offset: -5, time: "09:30", client: 2, size: 0, wash: "basico", addons: ["llantas"], status: "completed", companyStatus: "accepted_by_company", paymentType: "membresia" },
-    { offset: -3, time: "15:30", client: 3, size: 1, wash: "premium", addons: ["aromatizante"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo" },
-    { offset: -1, time: "11:00", client: 0, size: 2, wash: "detallado", addons: ["tapiceria"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo" },
+    { offset: -25, time: "09:00", client: 0, size: 0, wash: "basico", addons: ["interior"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo", comments: "Por favor toquen al portón, el timbre no funciona." },
+    { offset: -22, time: "11:30", client: 1, size: 1, wash: "premium", addons: ["motor", "aromatizante"], status: "completed", companyStatus: "accepted_by_company", paymentType: "membresia", comments: "Tengo perro grande, lo dejo dentro de la casa. No abran la reja del patio." },
+    { offset: -18, time: "14:00", client: 2, size: 2, wash: "detallado", addons: ["tapiceria", "cera"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo", comments: "El asiento del copiloto tiene una mancha de café, favor de poner atención ahí." },
+    { offset: -14, time: "10:00", client: 3, size: 0, wash: "express", addons: [], status: "completed", companyStatus: "accepted_by_company", paymentType: "membresia", comments: "Estaré en una junta, dejen el auto cerrado y manden mensaje al terminar." },
+    { offset: -10, time: "16:00", client: 0, size: 1, wash: "encerado", addons: ["rines"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo", comments: "Los rines son delicados, por favor no usar cepillo metálico." },
+    { offset: -7, time: "12:00", client: 1, size: 2, wash: "premium", addons: ["interior", "vidrios"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo", comments: "Hay sillas de bebé atrás, pueden moverlas con cuidado." },
+    { offset: -5, time: "09:30", client: 2, size: 0, wash: "basico", addons: ["llantas"], status: "completed", companyStatus: "accepted_by_company", paymentType: "membresia", comments: "Llave de agua está en el patio trasero, entrar por la cochera." },
+    { offset: -3, time: "15:30", client: 3, size: 1, wash: "premium", addons: ["aromatizante"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo", comments: "Aromatizante de lavanda si tienen, gracias." },
+    { offset: -1, time: "11:00", client: 0, size: 2, wash: "detallado", addons: ["tapiceria"], status: "completed", companyStatus: "accepted_by_company", paymentType: "directo", comments: "La tapicería tiene pelo de mascota, por favor aspirar bien." },
     // today
-    { offset: 0, time: "08:30", client: 1, size: 0, wash: "express", addons: [], status: "completed", companyStatus: "accepted_by_company", paymentType: "membresia" },
-    { offset: 0, time: "10:00", client: 2, size: 1, wash: "premium", addons: ["interior"], status: "in_progress", companyStatus: "accepted_by_company", paymentType: "directo" },
-    { offset: 0, time: "12:30", client: 3, size: 2, wash: "detallado", addons: ["cera", "tapiceria"], status: "accepted", companyStatus: "accepted_by_company", paymentType: "directo" },
-    { offset: 0, time: "15:00", client: 0, size: 1, wash: "encerado", addons: ["rines"], status: "pending", companyStatus: "pending_acceptance", paymentType: "directo" },
-    { offset: 0, time: "16:30", client: 1, size: 0, wash: "basico", addons: ["aromatizante"], status: "pending", companyStatus: "pending_acceptance", paymentType: "membresia" },
+    { offset: 0, time: "08:30", client: 1, size: 0, wash: "express", addons: [], status: "completed", companyStatus: "accepted_by_company", paymentType: "membresia", comments: "Necesito el auto listo antes de las 10am, gracias." },
+    { offset: 0, time: "10:00", client: 2, size: 1, wash: "premium", addons: ["interior"], status: "in_progress", companyStatus: "accepted_by_company", paymentType: "directo", comments: "Acceso por la entrada lateral, código del portón 4521." },
+    { offset: 0, time: "12:30", client: 3, size: 2, wash: "detallado", addons: ["cera", "tapiceria"], status: "accepted", companyStatus: "accepted_by_company", paymentType: "directo", comments: "El auto tiene rayones en la puerta trasera derecha, no son de ustedes." },
+    { offset: 0, time: "15:00", client: 0, size: 1, wash: "encerado", addons: ["rines"], status: "pending", companyStatus: "pending_acceptance", paymentType: "directo", comments: "Por favor confirmen 30 min antes de llegar." },
+    { offset: 0, time: "16:30", client: 1, size: 0, wash: "basico", addons: ["aromatizante"], status: "pending", companyStatus: "pending_acceptance", paymentType: "membresia", comments: "Tengo poco tiempo, si pueden ser puntuales se los agradezco mucho." },
     // tomorrow
-    { offset: 1, time: "09:00", client: 2, size: 2, wash: "premium", addons: ["motor"], status: "accepted", companyStatus: "accepted_by_company", paymentType: "directo" },
-    { offset: 1, time: "13:00", client: 3, size: 1, wash: "detallado", addons: ["tapiceria", "vidrios"], status: "pending", companyStatus: "pending_acceptance", paymentType: "directo" },
+    { offset: 1, time: "09:00", client: 2, size: 2, wash: "premium", addons: ["motor"], status: "accepted", companyStatus: "accepted_by_company", paymentType: "directo", comments: "El motor lleva mucho tiempo sin limpiar, va a necesitar más trabajo." },
+    { offset: 1, time: "13:00", client: 3, size: 1, wash: "detallado", addons: ["tapiceria", "vidrios"], status: "pending", companyStatus: "pending_acceptance", paymentType: "directo", comments: "Vidrios polarizados, usar solo productos suaves por favor." },
   ] as const;
 
   const addOnBySlug = Object.fromEntries(addons.map((a) => [a.slug, a]));
@@ -272,6 +272,7 @@ async function main() {
         status: f.status,
         companyStatus: f.companyStatus,
         paymentType: f.paymentType,
+        comments: f.comments,
       },
       addOnIds: selectedAddons.map((a) => a.id),
       billing: f.status === "completed" ? { status: f.paymentType === "membresia" ? "pendiente" : "pagado", paid: f.paymentType !== "membresia" } : undefined,
